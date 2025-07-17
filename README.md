@@ -100,3 +100,30 @@ L'application est entièrement contenue dans `app.py` et fonctionne sur les prin
     *   Des routes HTML qui affichent les différentes pages de l'interface (`/`, `/config`, `/playback/<cam_id>`, etc.).
     *   Des routes de streaming (`/video_feed/...`) qui renvoient un flux MJPEG pour la vidéo en direct.
     *   Des routes API (`/api/...`) que le JavaScript du frontend utilise pour obtenir des informations (liste des enregistrements, etc.) de manière asynchrone.
+
+
+
+
+VMS_Python/
+│
+├── app.py              # <-- Cœur de l'application (Flask, logique des caméras, API)
+│
+├── cameras.json        # <-- Fichier de configuration de vos caméras
+│
+├── recordings/         # <-- Dossier racine où les vidéos sont sauvegardées
+│   └── NOM_DE_LA_CAMERA/
+│       └── AAAA-MM-JJ/
+│           └── HH-MM-SS.mp4
+│
+├── thumbnails/         # <-- Dossier racine pour les miniatures des vidéos
+│   └── NOM_DE_LA_CAMERA/
+│       └── AAAA-MM-JJ/
+│           └── HH-MM-SS.jpg
+│
+└── templates/          # <-- Dossier contenant tous vos fichiers HTML
+    ├── config.html
+    ├── edit_camera.html
+    ├── fullscreen.html
+    ├── index.html
+    ├── playback.html
+    └── recordings.html
