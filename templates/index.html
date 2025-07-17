@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Grille de caméras</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .camera-card { margin-bottom: 2rem; }
+        .camera-feed { border: 3px solid #343a40; border-radius: 5px; background-color: #000; }
+        .camera-feed:hover { border-color: #007bff; }
+        .btn-group .btn { margin: 0 2px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">Mon VMS Web</a>
+        <div>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            {% for cam_id, camera in cameras.items() %}
+            <div class="col-md-6 col-lg-4 camera-card">
+                <h4 class="text-center">{{ camera.name }}</h4>
+                <img src="{{ url_for('video_feed', quality='sd', cam_id=cam_id) }}" class="img-fluid camera-feed">
+                <div class="text-center mt-2 btn-group w-100" role="group">
+                    <a href="{{ url_for('fullscreen', cam_id=cam_id) }}" class="btn btn-primary btn-sm">Plein Écran (HD)</a>
+                    <a href="{{ url_for('playback_page', cam_id=cam_id) }}" class="btn btn-info btn-sm">Timeline</a>
+                    <a href="{{ url_for('recordings_page', cam_id=cam_id) }}" class="btn btn-secondary btn-sm">Enregistrements</a>
+                </div>
+            </div>
+            {% else %}
+            <div class="col text-center">
+                <h2>Aucune caméra configurée ou active.</h2>
+                <a href="{{ url_for('config') }}" class="btn btn-primary">Aller à la configuration</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

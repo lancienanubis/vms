@@ -1,0 +1,54 @@
+{
+    "906b6f0d-9400-4cff-a47b-9b2def1d7cf0": {
+        "name": "Piscine",
+        "url_sd": "rtsp://philippe:philippe@192.168.0.82:554/stream2",
+        "url_hd": "rtsp://philippe:philippe@192.168.0.82:554/stream1",
+        "sensitivity": 1000,
+        "is_active": true,
+        "is_recording_enabled": false,
+        "show_detection": true
+    },
+    "ce824131-ad3e-43ac-9420-bf3b9f3a00b3": {
+        "name": "Entr\u00e9e",
+        "url_sd": "rtsp://philippe:philippe@192.168.0.80:554/stream2",
+        "url_hd": "rtsp://philippe:philippe@192.168.0.80:554/stream1",
+        "sensitivity": 1000,
+        "is_active": true,
+        "is_recording_enabled": true,
+        "show_detection": true
+    },
+    "2cdd2722-9d79-48e6-ac5f-ac25ab5a1b39": {
+        "name": "Jardin",
+        "url_sd": "rtsp://philippe:philippe@192.168.0.81:554/stream2",
+        "url_hd": "rtsp://philippe:philippe@192.168.0.81:554/stream1",
+        "sensitivity": 1000,
+        "is_active": true,
+        "is_recording_enabled": false,
+        "show_detection": true
+    },
+    "fd70c5eb-9b3a-4099-be57-286c5109ff0c": {
+        "name": "Table de Jardin",
+        "url_sd": "rtsp://philippe:philippe@192.168.0.83:554/stream2",
+        "url_hd": "rtsp://philippe:philippe@192.168.0.83:554/stream1",
+        "sensitivity": 3000,
+        "is_active": true,
+        "is_recording_enabled": false
+    },
+    "8e90c6cb-2ea8-494b-9e1a-4cd5143e1fb9": {
+        "name": "garage",
+        "url_sd": "rtsp://philippe:philippe@82.64.183.48:204/stream2",
+        "url_hd": "rtsp://philippe:philippe@82.64.183.48:204/stream1",
+        "sensitivity": 1000,
+        "is_active": false,
+        "is_recording_enabled": false,
+        "show_detection": false
+    },
+    "3e36aaa8-dbf6-4336-a265-a934557891fc": {
+        "name": "Portail",
+        "url_sd": "rtsp://philippe:philippe@82.64.183.48:201/stream2",
+        "url_hd": "rtsp://philippe:philippe@82.64.183.48:201/stream1",
+        "sensitivity": 1000,
+        "is_active": false,
+        "is_recording_enabled": false
+    }
+}
