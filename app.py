@@ -1,3 +1,4 @@
+# app.py (Version Finale - Erreur d'indentation corrigée)
 try:
     from flask import Flask, render_template, Response, request, redirect, url_for, send_from_directory, jsonify
     import cv2, json, os, uuid, numpy as np, traceback, threading, time
@@ -18,6 +19,7 @@ try:
         sanitized_name = unidecode(name)
         return "".join(c if c.isalnum() else '_' for c in sanitized_name)
 
+    # --- CLASSE CameraThread ---
     class CameraThread(threading.Thread):
         def __init__(self, cam_id, cam_config):
             super().__init__()
@@ -25,31 +27,28 @@ try:
             self.latest_frame, self.is_recording, self.last_motion_time, self.video_writer = None, False, 0, None
             self.recording_enabled = self.config.get('is_recording_enabled', True)
             self.show_detection = self.config.get('show_detection', True)
-
+            self.status = "Initializing"
+            self.motion_detected_in_frame = False
         def run(self):
             url, sensitivity = self.config['url_sd'], int(self.config.get('sensitivity', 1000))
             source = int(url) if url.isdigit() else url
-            
             while self.is_running:
+                self.status = "Connecting"
                 cap = cv2.VideoCapture(source)
                 if not cap.isOpened():
+                    self.status = "Connection Failed"
                     print(f"[{self.config['name']}] Echec connexion. Nouvelle tentative dans {COOLDOWN_SECONDS}s.")
                     time.sleep(COOLDOWN_SECONDS)
                     continue
-                
+                self.status = "Connected"
                 print(f"[{self.config['name']}] Connexion reussie.")
                 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=128, detectShadows=False)
                 start_time = time.time()
-                
                 while self.is_running and cap.isOpened():
                     success, frame = cap.read()
-                    if not success:
-                        print(f"[{self.config['name']}] Flux perdu. Reconnexion...")
-                        break
-
-                    motion_detected_this_frame = False
+                    if not success: self.status = "Stream Lost"; print(f"[{self.config['name']}] Flux perdu. Reconnexion..."); break
+                    self.motion_detected_in_frame = False
                     detected_contours = []
-                    
                     if time.time() - start_time > STABILIZATION_DELAY:
                         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                         gray_frame = cv2.GaussianBlur(gray_frame, (21, 21), 0)
@@ -57,44 +56,23 @@ try:
                         motion_mask = cv2.threshold(motion_mask, 25, 255, cv2.THRESH_BINARY)[1]
                         motion_mask = cv2.dilate(motion_mask, None, iterations=2)
                         contours, _ = cv2.findContours(motion_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                        
                         for c in contours:
-                            if cv2.contourArea(c) > sensitivity:
-                                motion_detected_this_frame = True
-                                detected_contours.append(c)
-                    
+                            if cv2.contourArea(c) > sensitivity: self.motion_detected_in_frame = True; detected_contours.append(c)
                     frame_for_display = frame.copy()
-
-                    if self.recording_enabled and motion_detected_this_frame:
+                    if self.recording_enabled and self.motion_detected_in_frame:
                         self.last_motion_time = time.time()
-                        if not self.is_recording:
-                            self.start_recording(frame)
-                    
-                    if self.is_recording and (time.time() - self.last_motion_time > COOLDOWN_SECONDS):
-                        self.stop_recording()
-                    
-                    if self.show_detection and motion_detected_this_frame:
-                        for c in detected_contours:
-                            (x, y, w, h) = cv2.boundingRect(c)
-                            cv2.rectangle(frame_for_display, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                        if not self.is_recording: self.start_recording(frame)
+                    if self.is_recording and (time.time() - self.last_motion_time > COOLDOWN_SECONDS): self.stop_recording()
+                    if self.show_detection and self.motion_detected_in_frame:
+                        for c in detected_contours: (x, y, w, h) = cv2.boundingRect(c); cv2.rectangle(frame_for_display, (x, y), (x + w, y + h), (0, 0, 255), 2)
                         cv2.putText(frame_for_display, "MOUVEMENT DETECTE", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                    
                     if self.is_recording:
                         cv2.putText(frame_for_display, "REC", (frame.shape[1] - 70, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-                        if self.video_writer and self.video_writer.isOpened():
-                            self.video_writer.write(frame)
-                    
-                    # =========================================================
-                    # CORRECTION FINALE : On stocke bien l'image avec les dessins
-                    # =========================================================
-                    with thread_lock:
-                        self.latest_frame = frame_for_display
-
+                        if self.video_writer and self.video_writer.isOpened(): self.video_writer.write(frame)
+                    with thread_lock: self.latest_frame = frame_for_display
                 cap.release()
                 self.stop_recording()
-        
         def start_recording(self, first_frame):
-            # ... (fonction inchangée)
             self.is_recording = True; now = datetime.now()
             camera_name_safe = sanitize_filename(self.config['name'])
             date_folder = now.strftime('%Y-%m-%d'); time_str = now.strftime('%H-%M-%S')
@@ -106,26 +84,23 @@ try:
             thumb_filepath = os.path.join(thumb_folder_path, thumb_filename)
             height, width, _ = first_frame.shape; fourcc = cv2.VideoWriter_fourcc(*'avc1')
             self.video_writer = cv2.VideoWriter(video_filepath, fourcc, VIDEO_FPS, (width, height))
-            if self.video_writer.isOpened():
-                print(f"[{self.config['name']}] Début de l'enregistrement : {video_filepath}")
-                try: cv2.imwrite(thumb_filepath, first_frame)
-                except Exception as e: print(f"[{self.config['name']}] Erreur création miniature: {e}")
+            if self.video_writer.isOpened(): print(f"[{self.config['name']}] Début de l'enregistrement : {video_filepath}"); cv2.imwrite(thumb_filepath, first_frame)
             else: print(f"[{self.config['name']}] Erreur initialisation enregistreur."); self.is_recording = False
+        
         def stop_recording(self):
             if self.is_recording:
-                self.is_recording = False; time.sleep(0.1); 
-                if self.video_writer is not None:
-                    self.video_writer.release(); self.video_writer = None; print(f"[{self.config['name']}] Fin de l'enregistrement.")
-        def stop(self):
-            self.is_running = False
-            self.stop_recording()
+                self.is_recording = False; time.sleep(0.1)
+                # --- CORRECTION DE L'INDENTATION ICI ---
+                if self.video_writer is not None: self.video_writer.release(); self.video_writer = None; print(f"[{self.config['name']}] Fin de l'enregistrement.")
 
-    # --- LE RESTE DU FICHIER EST INCHANGE ET CORRECT ---
+        def stop(self): self.is_running = False; self.stop_recording()
+
     def load_cameras_config():
         if not os.path.exists(CONFIG_FILE): return {}
         try:
             with open(CONFIG_FILE,'r',encoding='utf-8') as f: return json.load(f)
-        except: return {}
+        except json.JSONDecodeError as e: print(f"!!! ERREUR SYNTAXE {CONFIG_FILE}: {e} !!!"); return {}
+        except Exception as e: print(f"!!! ERREUR LECTURE {CONFIG_FILE}: {e} !!!"); return {}
     def save_cameras_config(cameras):
         with open(CONFIG_FILE,'w',encoding='utf-8') as f: json.dump(cameras,f,indent=4)
     def maintain_thumbnails():
@@ -152,21 +127,30 @@ try:
                                 if success: os.makedirs(thumb_folder_path, exist_ok=True); cv2.imwrite(thumb_filepath, frame)
                                 cap.release()
                                 print(f"[MAINTENANCE] Miniature créée : {thumb_filepath}")
-                        except Exception as e: print(f"[MAINTENANCE][ERREUR] Impossible de créer la miniature pour {video_filepath}: {e}")
+                        except Exception as e: print(f"[MAINTENANCE][ERREUR] {video_filepath}: {e}")
         print("--- Fin de la maintenance des miniatures ---")
-    def restart_camera_threads():
-        global camera_threads
+    def sync_camera_threads():
+        print("[SYNC] Synchronisation des caméras...")
+        config = load_cameras_config()
         with thread_lock:
-            for thread in camera_threads.values(): thread.stop()
-            time.sleep(0.5)
-            camera_threads.clear()
-            maintain_thumbnails()
-            for cam_id, config in load_cameras_config().items():
-                if config.get('is_active', True):
-                    thread = CameraThread(cam_id, config); thread.start(); camera_threads[cam_id] = thread
-                    print(f"Thread de surveillance démarré pour : {config['name']}")
-                else: print(f"La caméra {config['name']} est désactivée.")
-        print("Threads de surveillance redémarrés.")
+            running_ids = set(camera_threads.keys()); config_ids = set(config.keys())
+            ids_to_stop, ids_to_start, ids_to_restart = set(), set(), set()
+            for cam_id in running_ids:
+                if cam_id not in config_ids or not config.get(cam_id, {}).get('is_active', False): ids_to_stop.add(cam_id)
+            for cam_id, cam_config in config.items():
+                if not cam_config.get('is_active', False): continue
+                if cam_id not in running_ids: ids_to_start.add(cam_id)
+                else:
+                    if camera_threads[cam_id].config != cam_config: ids_to_restart.add(cam_id)
+            for cam_id in ids_to_stop.union(ids_to_restart):
+                if cam_id in camera_threads:
+                    print(f"[SYNC] Arrêt de: {camera_threads[cam_id].config.get('name', cam_id)}")
+                    camera_threads[cam_id].stop(); camera_threads[cam_id].join(timeout=1.0); camera_threads.pop(cam_id)
+            for cam_id in ids_to_start.union(ids_to_restart):
+                cam_config = config[cam_id]
+                print(f"[SYNC] Démarrage de: {cam_config.get('name', cam_id)}")
+                thread = CameraThread(cam_id, cam_config); thread.start(); camera_threads[cam_id] = thread
+        print(f"[SYNC] Synchronisation terminée. {len(camera_threads)} thread(s) actif(s).")
     def generate_frames(cam_id, quality):
         if quality == 'sd':
             thread = camera_threads.get(cam_id)
@@ -174,9 +158,9 @@ try:
             while True:
                 with thread_lock: frame = thread.latest_frame
                 if frame is None: time.sleep(0.1); continue
-                ret, buffer = cv2.imencode('.jpg', frame);
+                ret, buffer = cv2.imencode('.jpg', frame)
                 if not ret: continue
-                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/30)
+                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
         elif quality == 'hd':
             cam_config = load_cameras_config().get(cam_id)
             if not cam_config or not cam_config.get('url_hd'): return
@@ -185,21 +169,24 @@ try:
             while True:
                 success, frame = cap.read()
                 if not success: break
-                ret, buffer = cv2.imencode('.jpg', frame);
+                ret, buffer = cv2.imencode('.jpg', frame)
                 if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             cap.release()
+
+    # --- ROUTES ---
     @app.route('/')
     def index():
-        return render_template('index.html', cameras={k: v for k, v in load_cameras_config().items() if v.get('is_active', True)})
+        return render_template('index.html', cameras={k: v for k, v in load_cameras_config().items() if v.get('is_active', False)})
     @app.route('/add_camera', methods=['POST'])
     def add_camera():
-        cameras = load_cameras_config(); cameras[str(uuid.uuid4())] = {'name': request.form['camera_name'], 'url_sd': request.form['camera_url_sd'], 'url_hd': request.form['camera_url_hd'], 'sensitivity': int(request.form.get('sensitivity', 1000)), 'is_active': 'is_active' in request.form, 'is_recording_enabled': 'is_recording_enabled' in request.form, 'show_detection': 'show_detection' in request.form}; save_cameras_config(cameras); restart_camera_threads(); return redirect(url_for('config'))
+        cameras = load_cameras_config(); cameras[str(uuid.uuid4())] = {'name': request.form['camera_name'], 'url_sd': request.form['camera_url_sd'], 'url_hd': request.form['camera_url_hd'], 'sensitivity': int(request.form.get('sensitivity', 1000)), 'is_active': 'is_active' in request.form, 'is_recording_enabled': 'is_recording_enabled' in request.form, 'show_detection': 'show_detection' in request.form}; 
+        save_cameras_config(cameras); sync_camera_threads(); return redirect(url_for('config'))
     @app.route('/update/<cam_id>', methods=['POST'])
     def update_camera(cam_id):
         cameras = load_cameras_config()
         if cam_id in cameras:
             cameras[cam_id]['name'] = request.form['camera_name']; cameras[cam_id]['url_sd'] = request.form['camera_url_sd']; cameras[cam_id]['url_hd'] = request.form['camera_url_hd']; cameras[cam_id]['sensitivity'] = int(request.form.get('sensitivity', 1000)); cameras[cam_id]['is_active'] = 'is_active' in request.form; cameras[cam_id]['is_recording_enabled'] = 'is_recording_enabled' in request.form; cameras[cam_id]['show_detection'] = 'show_detection' in request.form
-        save_cameras_config(cameras); restart_camera_threads(); return redirect(url_for('config'))
+        save_cameras_config(cameras); sync_camera_threads(); return redirect(url_for('config'))
     @app.route('/config')
     def config(): return render_template('config.html', cameras=load_cameras_config())
     @app.route('/edit/<cam_id>')
@@ -213,8 +200,15 @@ try:
             cam_name_safe = sanitize_filename(cameras[cam_id]['name'])
             shutil.rmtree(os.path.join(RECORDINGS_DIR, cam_name_safe), ignore_errors=True)
             shutil.rmtree(os.path.join(THUMBNAILS_DIR, cam_name_safe), ignore_errors=True)
-            del cameras[cam_id]; save_cameras_config(cameras); restart_camera_threads()
+            del cameras[cam_id]; save_cameras_config(cameras); sync_camera_threads()
         return redirect(url_for('config'))
+    @app.route('/api/status')
+    def api_status():
+        statuses = {};
+        with thread_lock:
+            for cam_id, thread in camera_threads.items():
+                statuses[cam_id] = {"id": cam_id, "name": thread.config.get('name', 'N/A'), "status": thread.status, "is_recording": thread.is_recording, "motion_detected": thread.motion_detected_in_frame}
+        return jsonify(statuses)
     @app.route('/fullscreen/<cam_id>')
     def fullscreen(cam_id): return render_template('fullscreen.html', cam_id=cam_id, camera_info=load_cameras_config().get(cam_id))
     @app.route('/playback/<cam_id>')
@@ -299,12 +293,15 @@ try:
                 time.sleep(0.1)
         return "", 204
     @app.route('/video_feed/<quality>/<cam_id>')
-    def video_feed(quality, cam_id): return Response(generate_frames(cam_id, quality), mimetype='multipart/x-mixed-replace; boundary=frame')
+    def video_feed(quality, cam_id): 
+        return Response(generate_frames(cam_id, quality), mimetype='multipart/x-mixed-replace; boundary=frame')
     
     if __name__ == '__main__':
-        restart_camera_threads()
-        print("\n--- Lancement du serveur VMS (Version Finale v27 - Corrigée) ---")
+        maintain_thumbnails()
+        sync_camera_threads()
+        print("\n--- Lancement du serveur VMS (Phase 2 Corrigée) ---")
         app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+
 except Exception as e:
     print(f"\n\n!!! ERREUR FATALE AU DEMARRAGE: {e} !!!\n\n"); traceback.print_exc();
     input("Le programme a plante. Appuyez sur Entree pour quitter...")

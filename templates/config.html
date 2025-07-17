@@ -2,69 +2,114 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Configuration des Caméras</title>
+    <title>VMS - Configuration</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .container { margin-top: 20px; }
+        .btn-group-sm .btn { margin: 2px; }
+        /* Styles pour les indicateurs d'état Actif/Enregistrement */
+        .camera-active-status, .camera-record-status { 
+            width: 20px; 
+            height: 20px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            vertical-align: middle; 
+        }
+        .active-true, .record-enabled { background-color: green; }
+        .active-false, .record-disabled { background-color: red; }
+    </style>
 </head>
-<body style="background-color: #f4f4f4;">
+<body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
         <div>
-            <a class="nav-item nav-link d-inline-block active" href="/config">Configuration</a>
-            <a class="nav-item nav-link d-inline-block" href="/recordings_hub">Liste des Enregistrements</a>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('index') }}">Vue en direct</a>
+            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('config') }}">Configuration</a>
         </div>
     </nav>
-    <div class="container" style="max-width: 800px;">
-        <h1 class="mb-4">Configuration des Caméras</h1>
-        <div class="card mb-4">
-            <div class="card-header">Ajouter une nouvelle caméra</div>
-            <div class="card-body">
-                <form action="/add_camera" method="post">
-                    <div class="form-group"><label>Nom</label><input type="text" class="form-control" name="camera_name" required></div>
-                    <div class="form-group"><label>URL SD</label><input type="text" class="form-control" name="camera_url_sd" required></div>
-                    <div class="form-group"><label>URL HD</label><input type="text" class="form-control" name="camera_url_hd" required></div>
-                    <div class="form-group">
-                        <label for="sensitivity_new">Sensibilité</label>
-                        <input type="number" class="form-control" id="sensitivity_new" name="sensitivity" value="1000" min="100" max="10000" step="100" required>
-                        <small class="form-text text-muted">Min: 100 (très sensible), Max: 10000 (peu sensible).</small>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="is_active" id="is_active_new" value="true" checked>
-                        <label class="form-check-label" for="is_active_new">Activer la surveillance (flux direct)</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="is_recording_enabled" id="is_recording_enabled_new" value="true" checked>
-                        <label class="form-check-label" for="is_recording_enabled_new">Activer l'enregistrement sur détection</label>
-                    </div>
-                    <!-- NOUVEAU : Case à cocher pour le visuel de détection -->
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="show_detection" id="show_detection_new" value="true" checked>
-                        <label class="form-check-label" for="show_detection_new">Afficher le carré rouge de détection</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Ajouter</button>
-                </form>
-            </div>
-        </div>
-        <h2>Caméras existantes</h2>
-        <ul class="list-group">
-            {% for cam_id, camera in cameras.items() %}
-            <li class="list-group-item {% if not camera.get('is_active', True) %}list-group-item-light text-muted{% endif %}">
-                <div class="d-flex w-100 justify-content-between align-items-center">
-                    <div class="flex-grow-1">
-                        <h5 class="mb-1">
-                            {{ camera.name }} 
-                            {% if not camera.get('is_active', True) %}<span class="badge badge-secondary">Désactivée</span>
-                            {% elif not camera.get('is_recording_enabled', True) %}<span class="badge badge-warning">Enreg. désactivé</span>
-                            {% else %}<span class="badge badge-success">Active</span>{% endif %}
-                        </h5>
-                        <p class="mb-1"><small>Sensibilité: {{ camera.get('sensitivity', 1000) }} | Affichage détection: {% if camera.get('show_detection', True) %}Oui{% else %}Non{% endif %}</small></p>
-                    </div>
-                    <div class="ml-3"><a href="{{ url_for('edit_camera', cam_id=cam_id) }}" class="btn btn-secondary btn-sm mb-1">Modifier</a><form action="/delete_camera" method="post" style="margin: 0;"><input type="hidden" name="cam_id" value="{{ cam_id }}"><button type="submit" class="btn btn-danger btn-sm">Supprimer</button></form></div>
+    <div class="container">
+        <h2>Gestion des Caméras</h2>
+
+        <!-- Formulaire pour ajouter une nouvelle caméra -->
+        <h3>Ajouter une nouvelle caméra</h3>
+        <form action="{{ url_for('add_camera') }}" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="camera_name">Nom de la caméra</label>
+                    <input type="text" class="form-control" id="camera_name" name="camera_name" required>
                 </div>
-            </li>
-            {% else %}
-            <li class="list-group-item">Aucune caméra configurée.</li>
-            {% endfor %}
-        </ul>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_sd">URL du flux SD (ex: rtsp://.../stream2)</label>
+                    <input type="text" class="form-control" id="camera_url_sd" name="camera_url_sd" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_hd">URL du flux HD (optionnel)</label>
+                    <input type="text" class="form-control" id="camera_url_hd" name="camera_url_hd">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="sensitivity">Sensibilité détection (ex: 1000)</label>
+                    <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="1000" required>
+                </div>
+                <div class="form-group col-md-2 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input mt-0" id="is_active" name="is_active" checked>
+                    <label class="form-check-label ml-3" for="is_active">Active</label>
+                </div>
+                <div class="form-group col-md-2 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input mt-0" id="is_recording_enabled" name="is_recording_enabled" checked>
+                    <label class="form-check-label ml-3" for="is_recording_enabled">Enregistrement</label>
+                </div>
+                 <div class="form-group col-md-2 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input mt-0" id="show_detection" name="show_detection" checked>
+                    <label class="form-check-label ml-3" for="show_detection">Afficher détection</label>
+                </div>
+                <div class="form-group col-md-2">
+                    <button type="submit" class="btn btn-success btn-block">Ajouter Caméra</button>
+                </div>
+            </div>
+        </form>
+
+        <hr>
+
+        <!-- Liste des caméras existantes -->
+        <h3>Caméras configurées</h3>
+        <div class="table-responsive">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>URL (SD)</th>
+                        <th>Active</th>
+                        <th>Enregistrement</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cam_id, camera in cameras.items() %}
+                    <tr>
+                        <td>{{ camera.name }}</td>
+                        <td>{{ camera.url_sd }}</td>
+                        <td><span class="camera-active-status {{ 'active-true' if camera.is_active else 'active-false' }}"></span></td>
+                        <td><span class="camera-record-status {{ 'record-enabled' if camera.is_recording_enabled else 'record-disabled' }}"></span></td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('edit_camera', cam_id=cam_id) }}" class="btn btn-warning">Modifier</a>
+                                <form action="{{ url_for('delete_camera') }}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette caméra ? Les enregistrements associés seront aussi supprimés.');">
+                                    <input type="hidden" name="cam_id" value="{{ cam_id }}">
+                                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Aucune caméra configurée.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>
