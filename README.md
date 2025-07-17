@@ -104,26 +104,32 @@ L'application est entièrement contenue dans `app.py` et fonctionne sur les prin
 
 
 
+---
+
+## 🌳 Arborescence du Projet
+
+```
 VMS_Python/
 │
-├── app.py              # <-- Cœur de l'application (Flask, logique des caméras, API)
+├── app.py              # <-- Cœur de l'application (serveur, routes, logique des caméras)
 │
-├── cameras.json        # <-- Fichier de configuration de vos caméras
+├── cameras.json        # <-- Fichier de configuration où sont stockées vos caméras
 │
-├── recordings/         # <-- Dossier racine où les vidéos sont sauvegardées
+├── recordings/         # <-- Dossier où les vidéos sont enregistrées (créé automatiquement)
 │   └── NOM_DE_LA_CAMERA/
 │       └── AAAA-MM-JJ/
 │           └── HH-MM-SS.mp4
 │
-├── thumbnails/         # <-- Dossier racine pour les miniatures des vidéos
-│   └── NOM_DE_LA_CAMERA/
-│       └── AAAA-MM-JJ/
-│           └── HH-MM-SS.jpg
+├── templates/          # <-- Dossier contenant les fichiers HTML de l'interface web
+│   ├── config.html
+│   ├── edit_camera.html
+│   ├── fullscreen.html
+│   ├── index.html
+│   ├── playback.html
+│   └── recordings.html
 │
-└── templates/          # <-- Dossier contenant tous vos fichiers HTML
-    ├── config.html
-    ├── edit_camera.html
-    ├── fullscreen.html
-    ├── index.html
-    ├── playback.html
-    └── recordings.html
+└── thumbnails/         # <-- Dossier où les miniatures sont stockées (créé automatiquement)
+    └── NOM_DE_LA_CAMERA/
+        └── AAAA-MM-JJ/
+            └── HH-MM-SS.jpg
+```
