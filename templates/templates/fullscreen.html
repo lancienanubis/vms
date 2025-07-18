@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Plein Ecran - {{ camera_info.name }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #000; color: #fff; overflow: hidden; }
+        .fullscreen-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        .video-wrapper { flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .video-wrapper img { max-width: 100%; max-height: 90vh; object-fit: contain; }
+        .controls { padding: 10px; text-align: center; width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="fullscreen-container">
+        <div class="video-wrapper">
+            <!-- CORRECTION : On demande bien le flux 'hd' -->
+            <img src="{{ url_for('video_feed', quality='hd', cam_id=cam_id) }}">
+        </div>
+        <div class="controls">
+            <h2>{{ camera_info.name }}</h2>
+            <a href="{{ url_for('index') }}" class="btn btn-primary d-inline-block">Retour à la grille</a>
+            <a href="{{ url_for('playback_page', cam_id=cam_id) }}" class="btn btn-info d-inline-block">Timeline</a>
+        </div>
+    </div>
+</body>
+</html>

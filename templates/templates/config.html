@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Configuration</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .container { margin-top: 20px; }
+        .btn-group-sm .btn { margin: 2px; }
+        /* Styles pour les indicateurs d'état Actif/Enregistrement */
+        .camera-active-status, .camera-record-status { 
+            width: 20px; 
+            height: 20px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            vertical-align: middle; 
+        }
+        .active-true, .record-enabled { background-color: #28a745; } /* Vert */
+        .active-false, .record-disabled { background-color: #dc3545; } /* Rouge */
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">Mon VMS Web</a>
+        <div>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('index') }}">Vue en direct</a>
+            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Caméras Configurées</h2>
+            <!-- Bouton pour ajouter une nouvelle caméra (mène à add_camera.html) -->
+            <a href="{{ url_for('add_camera_form') }}" class="btn btn-success btn-lg">
+                + Ajouter une Caméra
+            </a>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>URL (SD)</th>
+                        <th class="text-center">Active</th>
+                        <th class="text-center">Enregistrement</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cam_id, camera in cameras.items() %}
+                    <tr>
+                        <td>{{ camera.name }}</td>
+                        <td>{{ camera.url_sd }}</td>
+                        <td class="text-center"><span class="camera-active-status {{ 'active-true' if camera.is_active else 'active-false' }}"></span></td>
+                        <td class="text-center"><span class="camera-record-status {{ 'record-enabled' if camera.is_recording_enabled else 'record-disabled' }}"></span></td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('edit_camera', cam_id=cam_id) }}" class="btn btn-warning">Modifier</a>
+                                <form action="{{ url_for('delete_camera') }}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette caméra ? Les enregistrements associés seront aussi supprimés.');" style="display: inline;">
+                                    <input type="hidden" name="cam_id" value="{{ cam_id }}">
+                                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Aucune caméra configurée. Cliquez sur "Ajouter une Caméra" pour commencer.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
