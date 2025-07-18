@@ -1,4 +1,4 @@
-# app.py (Version Finale V2.1 - Correction du Flux Vidéo)
+# app.py (Version Finale - Mode Débogage Activé)
 # Dernière mise à jour : 18 juillet 2025
 
 try:
@@ -88,7 +88,7 @@ try:
             self.video_writer = cv2.VideoWriter(video_filepath, fourcc, VIDEO_FPS, (width, height))
             if self.video_writer.isOpened(): print(f"[{self.config['name']}] Début de l'enregistrement : {video_filepath}"); cv2.imwrite(thumb_filepath, first_frame)
             else: print(f"[{self.config['name']}] Erreur initialisation enregistreur."); self.is_recording = False
-        def stop_recording(self, ):
+        def stop_recording(self):
             if self.is_recording:
                 self.is_recording = False; time.sleep(0.1)
                 if self.video_writer is not None: self.video_writer.release(); self.video_writer = None; print(f"[{self.config['name']}] Fin de l'enregistrement.")
@@ -132,48 +132,26 @@ try:
 
     # --- MODIFICATION v1.0 : Fonction de synchronisation dynamique ---
     def sync_camera_threads():
-        """
-        Met à jour les threads de manière dynamique (démarre/arrête/redémarre seulement ce qui est nécessaire).
-        """
         print("[SYNC] Synchronisation des caméras...")
         config = load_cameras_config()
-        
         with thread_lock:
-            running_ids = set(camera_threads.keys())
-            config_ids = set(config.keys())
-            
-            ids_to_stop = set()
-            ids_to_start = set()
-            ids_to_restart = set()
-
+            running_ids = set(camera_threads.keys()); config_ids = set(config.keys())
+            ids_to_stop, ids_to_start, ids_to_restart = set(), set(), set()
             for cam_id in running_ids:
-                if cam_id not in config_ids or not config.get(cam_id, {}).get('is_active', False):
-                    ids_to_stop.add(cam_id)
-
+                if cam_id not in config_ids or not config.get(cam_id, {}).get('is_active', False): ids_to_stop.add(cam_id)
             for cam_id, cam_config in config.items():
-                if not cam_config.get('is_active', False):
-                    continue
-                
-                if cam_id not in running_ids:
-                    ids_to_start.add(cam_id)
+                if not cam_config.get('is_active', False): continue
+                if cam_id not in running_ids: ids_to_start.add(cam_id)
                 else:
-                    if camera_threads[cam_id].config != cam_config:
-                        ids_to_restart.add(cam_id)
-
+                    if camera_threads[cam_id].config != cam_config: ids_to_restart.add(cam_id)
             for cam_id in ids_to_stop.union(ids_to_restart):
                 if cam_id in camera_threads:
                     print(f"[SYNC] Arrêt de: {camera_threads[cam_id].config.get('name', cam_id)}")
-                    camera_threads[cam_id].stop()
-                    camera_threads[cam_id].join(timeout=1.0)
-                    camera_threads.pop(cam_id)
-            
+                    camera_threads[cam_id].stop(); camera_threads[cam_id].join(timeout=1.0); camera_threads.pop(cam_id)
             for cam_id in ids_to_start.union(ids_to_restart):
                 cam_config = config[cam_id]
                 print(f"[SYNC] Démarrage de: {cam_config.get('name', cam_id)}")
-                thread = CameraThread(cam_id, cam_config)
-                thread.start()
-                camera_threads[cam_id] = thread
-                
+                thread = CameraThread(cam_id, cam_config); thread.start(); camera_threads[cam_id] = thread
         print(f"[SYNC] Synchronisation terminée. {len(camera_threads)} thread(s) actif(s).")
     
     # --- FONCTION generate_frames --- (MODIFIÉE v2.1 pour corriger le flux)
@@ -186,7 +164,7 @@ try:
                 if frame is None: time.sleep(0.1); continue
                 ret, buffer = cv2.imencode('.jpg', frame)
                 if not ret: continue
-                # --- CORRECTION DE LA LIGNE ICI : un seul '\r' ---
+                # --- CORRECTION v2.1 : Un seul '\r' ici pour le protocole MJPEG ---
                 yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
         elif quality == 'hd':
             cam_config = load_cameras_config().get(cam_id)
@@ -197,17 +175,16 @@ try:
                 success, frame = cap.read()
                 if not success: break
                 ret, buffer = cv2.imencode('.jpg', frame);
-                # --- CORRECTION DE LA LIGNE ICI : un seul '\r' ---
+                # --- CORRECTION v2.1 : Un seul '\r' ici pour le protocole MJPEG ---
                 if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             cap.release()
 
     # --- ROUTES ---
     @app.route('/')
     def index():
-        # --- Rendu de VOTRE index.html ---
         return render_template('index.html', cameras={k: v for k, v in load_cameras_config().items() if v.get('is_active', False)})
 
-    # --- NOUVELLE ROUTE v3.0 : Pour afficher le formulaire d'ajout de caméra ---
+    # --- MODIFICATION v3.0 : Nouvelle route pour afficher le formulaire d'ajout de caméra ---
     @app.route('/add_camera_form')
     def add_camera_form():
         return render_template('add_camera.html')
@@ -348,8 +325,8 @@ try:
     if __name__ == '__main__':
         maintain_thumbnails()
         sync_camera_threads()
-        print("\n--- Lancement du serveur VMS (Version 2.1 - Flux corrigé) ---")
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True) # Mettez debug=True pour le développement
+        print("\n--- Lancement du serveur VMS (Version 2.1 - Flux corrigé, base app.py) ---")
+        app.run(host='0.0.0.0', port=5000, debug=True, threaded=True) # Mettez debug=True pour le développement False
                                                                       # N'oubliez pas de le remettre à False pour la production
 except Exception as e:
     print(f"\n\n!!! ERREUR FATALE AU DEMARRAGE: {e} !!!\n\n"); traceback.print_exc();

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Timeline - {{ camera_info.name }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body { background-color: #343a40; color: #f8f9fa; }
+        .timeline-container { position: relative; height: 50px; border: 1px solid #6c757d; margin-top: 20px; border-radius: 5px; }
+        .timeline-slot { position: absolute; height: 100%; background-color: #28a745; opacity: 0.7; cursor: pointer; }
+        .time-label { position: absolute; top: -20px; font-size: 0.8em; color: #ced4da; }
+        .modal-dialog { max-width: 90%; }
+        .modal-content { background-color: #343a40; color: #f8f9fa; }
+        .modal-header { border-bottom: 1px solid #6c757d; }
+        .modal-footer { border-top: 1px solid #6c757d; }
+        video { width: 100%; max-height: 80vh; background-color: black; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">Mon VMS Web</a>
+        <!-- MODIFICATION : Suppression des boutons de navigation redondants -->
+        <!-- La div suivante a été supprimée -->
+        <!--
+        <div>
+            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('playback_page', cam_id=cam_id) }}">Timeline</a>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('recordings_page', cam_id=cam_id) }}">Grille Enregistrements</a>
+        </div>
+        -->
+    </nav>
+    <div class="container-fluid">
+        <h2 class="text-center mb-4">Timeline des événements pour {{ camera_info.name }}</h2>
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="datePicker">Sélectionner une date :</label>
+                <input type="date" id="datePicker" class="form-control" value="{{ today }}">
+            </div>
+            <div class="col-md-9">
+                <p class="text-muted mt-2">Cliquez sur un bloc vert pour voir l'enregistrement.</p>
+            </div>
+        </div>
+
+        <div class="timeline-container" id="timeline">
+            <!-- Labels horaires (00h, 06h, 12h, 18h) -->
+            <div class="time-label" style="left: 0%;">00h</div>
+            <div class="time-label" style="left: 25%;">06h</div>
+            <div class="time-label" style="left: 50%;">12h</div>
+            <div class="time-label" style="left: 75%;">18h</div>
+            <div class="time-label" style="right: 0%;">24h</div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Retour à la vue en direct</a>
+            <a href="{{ url_for('recordings_page', cam_id=cam_id) }}" class="btn btn-info mt-3">Voir la grille des enregistrements</a>
+        </div>
+
+    </div>
+
+    <!-- Modal pour la lecture vidéo -->
+    <div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="videoModalLabel">Lecture Vidéo</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <video id="videoPlayer" controls autoplay></video>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Bootstrap et jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // JavaScript pour la gestion de la timeline
+        const camId = "{{ cam_id }}";
+        const datePicker = document.getElementById('datePicker');
+        const timeline = document.getElementById('timeline');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoModal = $('#videoModal'); // Utilisation de jQuery pour le modal
+
+        // Fonction pour formater l'heure en secondes depuis le début de la journée
+        function timeToSeconds(timeStr) { // HH:MM:SS
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        }
+
+        function loadTimeline(date) {
+            timeline.innerHTML = ''; // Nettoyer la timeline existante
+            // Remettre les labels horaires après le nettoyage
+            timeline.innerHTML = `
+                <div class="time-label" style="left: 0%;">00h</div>
+                <div class="time-label" style="left: 25%;">06h</div>
+                <div class="time-label" style="left: 50%;">12h</div>
+                <div class="time-label" style="left: 75%;">18h</div>
+                <div class="time-label" style="right: 0%;">24h</div>
+            `;
+
+            fetch(`/api/timeline/${camId}/${date}`)
+                .then(response => response.json())
+                .then(recordings => {
+                    recordings.forEach(rec => {
+                        const startSeconds = timeToSeconds(rec.start_time);
+                        const durationSeconds = rec.duration;
+                        const totalSecondsInDay = 24 * 3600;
+
+                        const leftPosition = (startSeconds / totalSecondsInDay) * 100;
+                        const width = (durationSeconds / totalSecondsInDay) * 100;
+
+                        const slot = document.createElement('div');
+                        slot.className = 'timeline-slot';
+                        slot.style.left = `${leftPosition}%`;
+                        slot.style.width = `${width}%`;
+                        slot.title = `Début: ${rec.start_time}, Durée: ${rec.duration}s`;
+                        
+                        // Chemin correct pour la vidéo
+                        const videoUrl = `/play/{{ camera_info.safe_name }}/${date}/${rec.filename}`;
+
+                        slot.onclick = () => {
+                            videoPlayer.src = videoUrl;
+                            videoPlayer.load();
+                            videoPlayer.play();
+                            videoModal.modal('show'); // Afficher le modal
+                        };
+                        timeline.appendChild(slot);
+                    });
+                })
+                .catch(error => console.error('Erreur de chargement de la timeline:', error));
+        }
+
+        // Charger la timeline au chargement de la page
+        loadTimeline(datePicker.value);
+
+        // Recharger la timeline au changement de date
+        datePicker.addEventListener('change', (event) => {
+            loadTimeline(event.target.value);
+        });
+
+        // Pause la vidéo quand le modal est caché
+        videoModal.on('hidden.bs.modal', function () {
+            videoPlayer.pause();
+            videoPlayer.currentTime = 0; // Remettre au début
+        });
+    </script>
+</body>
+</html>

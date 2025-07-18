@@ -7,30 +7,26 @@
     <style>
         .container { margin-top: 20px; }
         .btn-group-sm .btn { margin: 2px; }
-        /* Styles pour les indicateurs d'état Actif/Enregistrement */
-        .camera-active-status, .camera-record-status { 
+        /* Styles pour les indicateurs d'état Actif/Enregistrement/Afficher détection */
+        .camera-status-dot { 
             width: 20px; 
             height: 20px; 
             border-radius: 50%; 
             display: inline-block; 
             vertical-align: middle; 
         }
-        .active-true, .record-enabled { background-color: #28a745; } /* Vert */
-        .active-false, .record-disabled { background-color: #dc3545; } /* Rouge */
+        .status-true { background-color: #28a745; } /* Vert */
+        .status-false { background-color: #dc3545; } /* Rouge */
+        .status-na { background-color: #6c757d; } /* Gris pour "non applicable" ou inconnu */
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <div>
-            <a class="nav-item nav-link d-inline-block" href="{{ url_for('index') }}">Vue en direct</a>
-            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('config') }}">Configuration</a>
-        </div>
     </nav>
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Caméras Configurées</h2>
-            <!-- Bouton pour ajouter une nouvelle caméra (mène à add_camera.html) -->
             <a href="{{ url_for('add_camera_form') }}" class="btn btn-success btn-lg">
                 + Ajouter une Caméra
             </a>
@@ -41,9 +37,10 @@
                 <thead>
                     <tr>
                         <th>Nom</th>
-                        <th>URL (SD)</th>
+                        <!-- MODIFICATION : La colonne URL (SD) est supprimée -->
                         <th class="text-center">Active</th>
                         <th class="text-center">Enregistrement</th>
+                        <th class="text-center">Détection Visuelle</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -51,9 +48,12 @@
                     {% for cam_id, camera in cameras.items() %}
                     <tr>
                         <td>{{ camera.name }}</td>
-                        <td>{{ camera.url_sd }}</td>
-                        <td class="text-center"><span class="camera-active-status {{ 'active-true' if camera.is_active else 'active-false' }}"></span></td>
-                        <td class="text-center"><span class="camera-record-status {{ 'record-enabled' if camera.is_recording_enabled else 'record-disabled' }}"></span></td>
+                        <!-- MODIFICATION : La cellule avec l'URL (SD) est supprimée -->
+                        <td class="text-center"><span class="camera-status-dot {{ 'status-true' if camera.is_active else 'status-false' }}"></span></td>
+                        <td class="text-center"><span class="camera-status-dot {{ 'status-true' if camera.is_recording_enabled else 'status-false' }}"></span></td>
+                        <td class="text-center">
+                            <span class="camera-status-dot {{ 'status-true' if camera.show_detection else 'status-false' }}"></span>
+                        </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm" role="group">
                                 <a href="{{ url_for('edit_camera', cam_id=cam_id) }}" class="btn btn-warning">Modifier</a>
@@ -66,7 +66,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="text-center">Aucune caméra configurée. Cliquez sur "Ajouter une Caméra" pour commencer.</td>
+                        <td colspan="5" class="text-center">Aucune caméra configurée. Cliquez sur "Ajouter une Caméra" pour commencer.</td> <!-- Colspan ajusté de 6 à 5 -->
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -2,47 +2,70 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Modifier la Caméra</title>
+    <title>VMS - Modifier Caméra</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
-<body style="background-color: #f4f4f4;">
+<body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <div>
-            <a class="nav-item nav-link d-inline-block" href="/config">Configuration</a>
-            <a class="nav-item nav-link d-inline-block" href="/recordings_hub">Liste des Enregistrements</a>
-        </div>
+        <!-- Suppression des boutons de navigation redondants -->
     </nav>
-    <div class="container" style="max-width: 800px;">
-        <h1 class="mb-4">Modifier la caméra : {{ camera.name }}</h1>
-        <div class="card">
-            <div class="card-body">
-                <form action="{{ url_for('update_camera', cam_id=cam_id) }}" method="post">
-                    <div class="form-group"><label>Nom</label><input type="text" class="form-control" name="camera_name" value="{{ camera.name }}" required></div>
-                    <div class="form-group"><label>URL SD</label><input type="text" class="form-control" name="camera_url_sd" value="{{ camera.url_sd }}" required></div>
-                    <div class="form-group"><label>URL HD</label><input type="text" class="form-control" name="camera_url_hd" value="{{ camera.url_hd }}" required></div>
-                    <div class="form-group">
-                        <label>Sensibilité</label><input type="number" class="form-control" name="sensitivity" value="{{ camera.get('sensitivity', 1000) }}" min="100" max="10000" step="100" required>
-                        <small class="form-text text-muted">Min: 100 (très sensible), Max: 10000 (peu sensible).</small>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="is_active" id="is_active_edit" value="true" {% if camera.get('is_active', True) %}checked{% endif %}>
-                        <label class="form-check-label" for="is_active_edit">Activer la surveillance (flux direct)</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="is_recording_enabled" id="is_recording_enabled_edit" value="true" {% if camera.get('is_recording_enabled', True) %}checked{% endif %}>
-                        <label class="form-check-label" for="is_recording_enabled_edit">Activer l'enregistrement sur détection</label>
-                    </div>
-                    <!-- NOUVEAU : Case à cocher pour le visuel de détection -->
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" name="show_detection" id="show_detection_edit" value="true" {% if camera.get('show_detection', True) %}checked{% endif %}>
-                        <label class="form-check-label" for="show_detection_edit">Afficher le carré rouge de détection</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Sauvegarder</button>
-                    <a href="/config" class="btn btn-secondary">Annuler</a>
-                </form>
+    <div class="container">
+        <h2>Modifier Caméra : {{ camera.name }}</h2>
+        <hr>
+        <!-- Le formulaire soumet à la route d'update, en passant l'ID de la caméra -->
+        <form action="{{ url_for('update_camera', cam_id=cam_id) }}" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="camera_name">Nom de la caméra</label>
+                    <!-- Les champs sont pré-remplis avec les données existantes de la caméra -->
+                    <input type="text" class="form-control" id="camera_name" name="camera_name" value="{{ camera.name }}" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_sd">URL du flux SD (ex: rtsp://.../stream2)</label>
+                    <input type="text" class="form-control" id="camera_url_sd" name="camera_url_sd" value="{{ camera.url_sd }}" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_hd">URL du flux HD (optionnel)</label>
+                    <input type="text" class="form-control" id="camera_url_hd" name="camera_url_hd" value="{{ camera.url_hd }}">
+                </div>
             </div>
-        </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="sensitivity">Sensibilité détection (plus le chiffre est élevé, moins c'est sensible)</label>
+                    <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="{{ camera.sensitivity }}" required>
+                </div>
+            </div>
+            <div class="form-row align-items-center">
+                 <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" {% if camera.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Activée</label>
+                    </div>
+                </div>
+                <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="is_recording_enabled" name="is_recording_enabled" {% if camera.is_recording_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="is_recording_enabled">Enregistrement</label>
+                    </div>
+                </div>
+                 <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="show_detection" name="show_detection" {% if camera.show_detection %}checked{% endif %}>
+                        <label class="form-check-label" for="show_detection">Afficher détection</label>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <button type="submit" class="btn btn-success btn-lg">Sauvegarder les Modifications</button>
+            <a href="{{ url_for('config') }}" class="btn btn-secondary btn-lg">Annuler</a>
+        </form>
+        <hr>
+        <!-- Bouton de suppression séparé pour plus de clarté, comme dans votre code original -->
+        <form action="{{ url_for('delete_camera') }}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette caméra ? Les enregistrements associés seront aussi supprimés.');" class="mt-4">
+            <input type="hidden" name="cam_id" value="{{ cam_id }}">
+            <button type="submit" class="btn btn-danger">Supprimer cette caméra</button>
+        </form>
     </div>
 </body>
 </html>
