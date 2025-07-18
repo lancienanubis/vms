@@ -1,4 +1,6 @@
-# app.py (Votre code, pointant sur index.html)
+# app.py (Version Finale V2.1 - Correction du Flux Vidéo)
+# Dernière mise à jour : 18 juillet 2025
+
 try:
     from flask import Flask, render_template, Response, request, redirect, url_for, send_from_directory, jsonify
     import cv2, json, os, uuid, numpy as np, traceback, threading, time
@@ -27,27 +29,27 @@ try:
             self.latest_frame, self.is_recording, self.last_motion_time, self.video_writer = None, False, 0, None
             self.recording_enabled = self.config.get('is_recording_enabled', True)
             self.show_detection = self.config.get('show_detection', True)
-            self.status = "Initializing" # Pour les statuts en temps réel
-            self.motion_detected_in_frame = False # Pour les statuts en temps réel
+            self.status = "Initializing"
+            self.motion_detected_in_frame = False
         def run(self):
             url, sensitivity = self.config['url_sd'], int(self.config.get('sensitivity', 1000))
             source = int(url) if url.isdigit() else url
             while self.is_running:
-                self.status = "Connecting" # Pour les statuts en temps réel
+                self.status = "Connecting"
                 cap = cv2.VideoCapture(source)
                 if not cap.isOpened():
-                    self.status = "Connection Failed" # Pour les statuts en temps réel
+                    self.status = "Connection Failed"
                     print(f"[{self.config['name']}] Echec connexion. Nouvelle tentative dans {COOLDOWN_SECONDS}s.")
                     time.sleep(COOLDOWN_SECONDS)
                     continue
-                self.status = "Connected" # Pour les statuts en temps réel
+                self.status = "Connected"
                 print(f"[{self.config['name']}] Connexion reussie.")
                 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=128, detectShadows=False)
                 start_time = time.time()
                 while self.is_running and cap.isOpened():
                     success, frame = cap.read()
                     if not success: self.status = "Stream Lost"; print(f"[{self.config['name']}] Flux perdu. Reconnexion..."); break
-                    self.motion_detected_in_frame = False # Pour les statuts en temps réel
+                    self.motion_detected_in_frame = False
                     detected_contours = []
                     if time.time() - start_time > STABILIZATION_DELAY:
                         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -86,7 +88,7 @@ try:
             self.video_writer = cv2.VideoWriter(video_filepath, fourcc, VIDEO_FPS, (width, height))
             if self.video_writer.isOpened(): print(f"[{self.config['name']}] Début de l'enregistrement : {video_filepath}"); cv2.imwrite(thumb_filepath, first_frame)
             else: print(f"[{self.config['name']}] Erreur initialisation enregistreur."); self.is_recording = False
-        def stop_recording(self):
+        def stop_recording(self, ):
             if self.is_recording:
                 self.is_recording = False; time.sleep(0.1)
                 if self.video_writer is not None: self.video_writer.release(); self.video_writer = None; print(f"[{self.config['name']}] Fin de l'enregistrement.")
@@ -127,29 +129,54 @@ try:
                                 print(f"[MAINTENANCE] Miniature créée : {thumb_filepath}")
                         except Exception as e: print(f"[MAINTENANCE][ERREUR] Impossible de créer la miniature pour {video_filepath}: {e}")
         print("--- Fin de la maintenance des miniatures ---")
+
+    # --- MODIFICATION v1.0 : Fonction de synchronisation dynamique ---
     def sync_camera_threads():
+        """
+        Met à jour les threads de manière dynamique (démarre/arrête/redémarre seulement ce qui est nécessaire).
+        """
         print("[SYNC] Synchronisation des caméras...")
         config = load_cameras_config()
+        
         with thread_lock:
-            running_ids = set(camera_threads.keys()); config_ids = set(config.keys())
-            ids_to_stop, ids_to_start, ids_to_restart = set(), set(), set()
+            running_ids = set(camera_threads.keys())
+            config_ids = set(config.keys())
+            
+            ids_to_stop = set()
+            ids_to_start = set()
+            ids_to_restart = set()
+
             for cam_id in running_ids:
-                if cam_id not in config_ids or not config.get(cam_id, {}).get('is_active', False): ids_to_stop.add(cam_id)
+                if cam_id not in config_ids or not config.get(cam_id, {}).get('is_active', False):
+                    ids_to_stop.add(cam_id)
+
             for cam_id, cam_config in config.items():
-                if not cam_config.get('is_active', False): continue
-                if cam_id not in running_ids: ids_to_start.add(cam_id)
+                if not cam_config.get('is_active', False):
+                    continue
+                
+                if cam_id not in running_ids:
+                    ids_to_start.add(cam_id)
                 else:
-                    if camera_threads[cam_id].config != cam_config: ids_to_restart.add(cam_id)
+                    if camera_threads[cam_id].config != cam_config:
+                        ids_to_restart.add(cam_id)
+
             for cam_id in ids_to_stop.union(ids_to_restart):
                 if cam_id in camera_threads:
                     print(f"[SYNC] Arrêt de: {camera_threads[cam_id].config.get('name', cam_id)}")
-                    camera_threads[cam_id].stop(); camera_threads[cam_id].join(timeout=1.0); camera_threads.pop(cam_id)
+                    camera_threads[cam_id].stop()
+                    camera_threads[cam_id].join(timeout=1.0)
+                    camera_threads.pop(cam_id)
+            
             for cam_id in ids_to_start.union(ids_to_restart):
                 cam_config = config[cam_id]
                 print(f"[SYNC] Démarrage de: {cam_config.get('name', cam_id)}")
-                thread = CameraThread(cam_id, cam_config); thread.start(); camera_threads[cam_id] = thread
+                thread = CameraThread(cam_id, cam_config)
+                thread.start()
+                camera_threads[cam_id] = thread
+                
         print(f"[SYNC] Synchronisation terminée. {len(camera_threads)} thread(s) actif(s).")
     
+    # --- FONCTION generate_frames --- (MODIFIÉE v2.1 pour corriger le flux)
     def generate_frames(cam_id, quality):
         if quality == 'sd':
             thread = camera_threads.get(cam_id)
@@ -157,9 +184,10 @@ try:
             while True:
                 with thread_lock: frame = thread.latest_frame
                 if frame is None: time.sleep(0.1); continue
-                ret, buffer = cv2.imencode('.jpg', frame);
+                ret, buffer = cv2.imencode('.jpg', frame)
                 if not ret: continue
-                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
+                # --- CORRECTION DE LA LIGNE ICI : un seul '\r' ---
+                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
         elif quality == 'hd':
             cam_config = load_cameras_config().get(cam_id)
             if not cam_config or not cam_config.get('url_hd'): return
@@ -169,16 +197,17 @@ try:
                 success, frame = cap.read()
                 if not success: break
                 ret, buffer = cv2.imencode('.jpg', frame);
-                if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\r\n' + buffer.tobytes() + b'\r\n')
+                # --- CORRECTION DE LA LIGNE ICI : un seul '\r' ---
+                if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             cap.release()
 
     # --- ROUTES ---
     @app.route('/')
     def index():
-        # MODIFICATION : Rendu de VOTRE index.html
+        # --- Rendu de VOTRE index.html ---
         return render_template('index.html', cameras={k: v for k, v in load_cameras_config().items() if v.get('is_active', False)})
 
-    # Route pour afficher le formulaire d'ajout de caméra (existante)
+    # --- NOUVELLE ROUTE v3.0 : Pour afficher le formulaire d'ajout de caméra ---
     @app.route('/add_camera_form')
     def add_camera_form():
         return render_template('add_camera.html')
@@ -199,6 +228,7 @@ try:
         sync_camera_threads(); 
         return redirect(url_for('config'))
 
+    # --- MODIFICATION v3.0 : Route /config ---
     @app.route('/config')
     def config(): return render_template('config.html', cameras=load_cameras_config())
     
@@ -219,7 +249,7 @@ try:
             sync_camera_threads()
         return redirect(url_for('config'))
     
-    # Nouvelle route pour l'API de statut (Phase 2)
+    # --- MODIFICATION v2.0 : Nouvelle route pour l'API de statut ---
     @app.route('/api/status')
     def api_status():
         statuses = {};
@@ -318,7 +348,7 @@ try:
     if __name__ == '__main__':
         maintain_thumbnails()
         sync_camera_threads()
-        print("\n--- Lancement du serveur VMS (Phase 2, Ajout Caméra sur Page Dédicacée) ---")
+        print("\n--- Lancement du serveur VMS (Version 2.1 - Flux corrigé) ---")
         app.run(host='0.0.0.0', port=5000, debug=False, threaded=True) # Mettez debug=True pour le développement
                                                                       # N'oubliez pas de le remettre à False pour la production
 except Exception as e:
