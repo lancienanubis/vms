@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMS - Vue en Direct</title>
+    <!-- Bootstrap CSS depuis un CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body { background-color: #343a40; }
+        .card { height: 100%; }
+        .card-img-top {
+            border-style: solid;
+            border-width: 4px !important;
+            transition: border-color 0.2s ease-in-out;
+        }
+        /* Styles pour le titre et le badge (depuis index_v2.html) */
+        .camera-title-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        /* Styles pour les boutons (depuis index.html) */
+        .btn-group .btn { margin: 0 2px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="{{ url_for('index') }}">VMS Python</a>
+        <div class="navbar-nav">
+            <a class="nav-item nav-link active" href="{{ url_for('index') }}">Vue en direct</a>
+            <a class="nav-item nav-link" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            {% if cameras %}
+                {% for cam_id, camera in cameras.items() %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card bg-dark text-white" id="camera-card-{{ cam_id }}">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <!-- Titre de la caméra et badge de statut (depuis index_v2.html) -->
+                            <div class="camera-title-container" style="flex-grow: 1;">
+                                <a href="{{ url_for('fullscreen', cam_id=cam_id) }}" class="text-white font-weight-bold" style="text-decoration: none;">{{ camera.name }}</a>
+                                <span class="badge badge-secondary ml-2" id="status-badge-{{ cam_id }}">...</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('fullscreen', cam_id=cam_id) }}">
+                            <!-- Image de la caméra (depuis index_v2.html) -->
+                            <img id="stream-{{ cam_id }}" src="{{ url_for('poster', cam_id=cam_id) }}?t={{ range(1, 100000) | random }}" class="card-img-top border border-secondary" alt="Flux de la caméra {{ camera.name }}">
+                        </a>
+                        
+                        <!-- ==================================================================== -->
+                        <!-- VOTRE GROUPE DE BOUTONS ORIGINAL (pris de index.html) -->
+                        <!-- ==================================================================== -->
+                        <div class="card-footer text-center">
+                            <div class="text-center mt-2 btn-group w-100" role="group">
+                                <a href="{{ url_for('fullscreen', cam_id=cam_id) }}" class="btn btn-primary btn-sm">Plein Écran (HD)</a>
+                                <a href="{{ url_for('playback_page', cam_id=cam_id) }}" class="btn btn-info btn-sm">Timeline</a>
+                                <a href="{{ url_for('recordings_page', cam_id=cam_id) }}" class="btn btn-secondary btn-sm">Enregistrements</a>
+                            </div>
+                        </div>
+                        <!-- ==================================================================== -->
+
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-warning text-center">
+                        <h4>Aucune caméra configurée ou active.</h4>
+                        <p>Veuillez vous rendre dans la <a href="{{ url_for('config') }}" class="alert-link">page de configuration</a> pour ajouter une caméra.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SCRIPT JAVASCRIPT POUR LES STATUTS (INCHANGÉ) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const camera_ids = [ {% for cam_id in cameras.keys() %}"{{ cam_id }}",{% endfor %} ];
+
+            function startStreams() {
+                camera_ids.forEach(cam_id => {
+                    const img = document.getElementById(`stream-${cam_id}`);
+                    if (img) {
+                        img.src = `/video_feed/sd/${cam_id}?t=${new Date().getTime()}`;
+                    }
+                });
+            }
+
+            function updateStatuses() {
+                fetch('/api/status')
+                    .then(response => response.ok ? response.json() : Promise.reject('Erreur réseau'))
+                    .then(statuses => {
+                        camera_ids.forEach(cam_id => {
+                            const status = statuses[cam_id];
+                            const badge = document.getElementById(`status-badge-${cam_id}`);
+                            const img = document.getElementById(`stream-${cam_id}`);
+                            
+                            if (!status || !badge || !img) return;
+
+                            badge.textContent = status.status;
+                            if (status.is_recording) {
+                                badge.className = 'badge badge-danger';
+                                badge.textContent = 'REC';
+                            } else if (status.status === 'Connected') {
+                                badge.className = 'badge badge-success';
+                            } else if (status.status.includes('Failed') || status.status.includes('Lost')) {
+                                badge.className = 'badge badge-warning text-dark';
+                            } else {
+                                badge.className = 'badge badge-info';
+                            }
+
+                            if (status.motion_detected) {
+                                img.style.borderColor = '#dc3545';
+                            } else {
+                                img.style.borderColor = '#343a40';
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Erreur de mise à jour des statuts:', error));
+            }
+
+            if (camera_ids.length > 0) {
+                setTimeout(startStreams, 500);
+                setInterval(updateStatuses, 2000);
+                updateStatuses();
+            }
+        });
+    </script>
+</body>
+</html>

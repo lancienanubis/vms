@@ -1,4 +1,4 @@
-# app.py (Version Finale - Erreur d'indentation corrigée)
+# app.py (Votre code, pointant sur index.html)
 try:
     from flask import Flask, render_template, Response, request, redirect, url_for, send_from_directory, jsonify
     import cv2, json, os, uuid, numpy as np, traceback, threading, time
@@ -27,27 +27,27 @@ try:
             self.latest_frame, self.is_recording, self.last_motion_time, self.video_writer = None, False, 0, None
             self.recording_enabled = self.config.get('is_recording_enabled', True)
             self.show_detection = self.config.get('show_detection', True)
-            self.status = "Initializing"
-            self.motion_detected_in_frame = False
+            self.status = "Initializing" # Pour les statuts en temps réel
+            self.motion_detected_in_frame = False # Pour les statuts en temps réel
         def run(self):
             url, sensitivity = self.config['url_sd'], int(self.config.get('sensitivity', 1000))
             source = int(url) if url.isdigit() else url
             while self.is_running:
-                self.status = "Connecting"
+                self.status = "Connecting" # Pour les statuts en temps réel
                 cap = cv2.VideoCapture(source)
                 if not cap.isOpened():
-                    self.status = "Connection Failed"
+                    self.status = "Connection Failed" # Pour les statuts en temps réel
                     print(f"[{self.config['name']}] Echec connexion. Nouvelle tentative dans {COOLDOWN_SECONDS}s.")
                     time.sleep(COOLDOWN_SECONDS)
                     continue
-                self.status = "Connected"
+                self.status = "Connected" # Pour les statuts en temps réel
                 print(f"[{self.config['name']}] Connexion reussie.")
                 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=128, detectShadows=False)
                 start_time = time.time()
                 while self.is_running and cap.isOpened():
                     success, frame = cap.read()
                     if not success: self.status = "Stream Lost"; print(f"[{self.config['name']}] Flux perdu. Reconnexion..."); break
-                    self.motion_detected_in_frame = False
+                    self.motion_detected_in_frame = False # Pour les statuts en temps réel
                     detected_contours = []
                     if time.time() - start_time > STABILIZATION_DELAY:
                         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -86,15 +86,13 @@ try:
             self.video_writer = cv2.VideoWriter(video_filepath, fourcc, VIDEO_FPS, (width, height))
             if self.video_writer.isOpened(): print(f"[{self.config['name']}] Début de l'enregistrement : {video_filepath}"); cv2.imwrite(thumb_filepath, first_frame)
             else: print(f"[{self.config['name']}] Erreur initialisation enregistreur."); self.is_recording = False
-        
         def stop_recording(self):
             if self.is_recording:
                 self.is_recording = False; time.sleep(0.1)
-                # --- CORRECTION DE L'INDENTATION ICI ---
                 if self.video_writer is not None: self.video_writer.release(); self.video_writer = None; print(f"[{self.config['name']}] Fin de l'enregistrement.")
-
         def stop(self): self.is_running = False; self.stop_recording()
 
+    # --- FONCTIONS UTILITAIRES ET DE SYNCHRONISATION ---
     def load_cameras_config():
         if not os.path.exists(CONFIG_FILE): return {}
         try:
@@ -127,7 +125,7 @@ try:
                                 if success: os.makedirs(thumb_folder_path, exist_ok=True); cv2.imwrite(thumb_filepath, frame)
                                 cap.release()
                                 print(f"[MAINTENANCE] Miniature créée : {thumb_filepath}")
-                        except Exception as e: print(f"[MAINTENANCE][ERREUR] {video_filepath}: {e}")
+                        except Exception as e: print(f"[MAINTENANCE][ERREUR] Impossible de créer la miniature pour {video_filepath}: {e}")
         print("--- Fin de la maintenance des miniatures ---")
     def sync_camera_threads():
         print("[SYNC] Synchronisation des caméras...")
@@ -151,6 +149,7 @@ try:
                 print(f"[SYNC] Démarrage de: {cam_config.get('name', cam_id)}")
                 thread = CameraThread(cam_id, cam_config); thread.start(); camera_threads[cam_id] = thread
         print(f"[SYNC] Synchronisation terminée. {len(camera_threads)} thread(s) actif(s).")
+    
     def generate_frames(cam_id, quality):
         if quality == 'sd':
             thread = camera_threads.get(cam_id)
@@ -158,9 +157,9 @@ try:
             while True:
                 with thread_lock: frame = thread.latest_frame
                 if frame is None: time.sleep(0.1); continue
-                ret, buffer = cv2.imencode('.jpg', frame)
+                ret, buffer = cv2.imencode('.jpg', frame);
                 if not ret: continue
-                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
+                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\r\n' + buffer.tobytes() + b'\r\n'); time.sleep(1/VIDEO_FPS)
         elif quality == 'hd':
             cam_config = load_cameras_config().get(cam_id)
             if not cam_config or not cam_config.get('url_hd'): return
@@ -169,30 +168,45 @@ try:
             while True:
                 success, frame = cap.read()
                 if not success: break
-                ret, buffer = cv2.imencode('.jpg', frame)
-                if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                ret, buffer = cv2.imencode('.jpg', frame);
+                if ret: yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\r\n' + buffer.tobytes() + b'\r\n')
             cap.release()
 
     # --- ROUTES ---
     @app.route('/')
     def index():
+        # MODIFICATION : Rendu de VOTRE index.html
         return render_template('index.html', cameras={k: v for k, v in load_cameras_config().items() if v.get('is_active', False)})
+
+    # Route pour afficher le formulaire d'ajout de caméra (existante)
+    @app.route('/add_camera_form')
+    def add_camera_form():
+        return render_template('add_camera.html')
+
     @app.route('/add_camera', methods=['POST'])
     def add_camera():
         cameras = load_cameras_config(); cameras[str(uuid.uuid4())] = {'name': request.form['camera_name'], 'url_sd': request.form['camera_url_sd'], 'url_hd': request.form['camera_url_hd'], 'sensitivity': int(request.form.get('sensitivity', 1000)), 'is_active': 'is_active' in request.form, 'is_recording_enabled': 'is_recording_enabled' in request.form, 'show_detection': 'show_detection' in request.form}; 
-        save_cameras_config(cameras); sync_camera_threads(); return redirect(url_for('config'))
+        save_cameras_config(cameras); 
+        sync_camera_threads(); 
+        return redirect(url_for('config'))
+
     @app.route('/update/<cam_id>', methods=['POST'])
     def update_camera(cam_id):
         cameras = load_cameras_config()
         if cam_id in cameras:
             cameras[cam_id]['name'] = request.form['camera_name']; cameras[cam_id]['url_sd'] = request.form['camera_url_sd']; cameras[cam_id]['url_hd'] = request.form['camera_url_hd']; cameras[cam_id]['sensitivity'] = int(request.form.get('sensitivity', 1000)); cameras[cam_id]['is_active'] = 'is_active' in request.form; cameras[cam_id]['is_recording_enabled'] = 'is_recording_enabled' in request.form; cameras[cam_id]['show_detection'] = 'show_detection' in request.form
-        save_cameras_config(cameras); sync_camera_threads(); return redirect(url_for('config'))
+        save_cameras_config(cameras); 
+        sync_camera_threads(); 
+        return redirect(url_for('config'))
+
     @app.route('/config')
     def config(): return render_template('config.html', cameras=load_cameras_config())
+    
     @app.route('/edit/<cam_id>')
     def edit_camera(cam_id):
         camera_to_edit = load_cameras_config().get(cam_id);
         return render_template('edit_camera.html', camera=camera_to_edit, cam_id=cam_id) if camera_to_edit else ("Camera non trouvee", 404)
+
     @app.route('/delete_camera', methods=['POST'])
     def delete_camera():
         cameras, cam_id = load_cameras_config(), request.form['cam_id'];
@@ -200,8 +214,12 @@ try:
             cam_name_safe = sanitize_filename(cameras[cam_id]['name'])
             shutil.rmtree(os.path.join(RECORDINGS_DIR, cam_name_safe), ignore_errors=True)
             shutil.rmtree(os.path.join(THUMBNAILS_DIR, cam_name_safe), ignore_errors=True)
-            del cameras[cam_id]; save_cameras_config(cameras); sync_camera_threads()
+            del cameras[cam_id]; 
+            save_cameras_config(cameras); 
+            sync_camera_threads()
         return redirect(url_for('config'))
+    
+    # Nouvelle route pour l'API de statut (Phase 2)
     @app.route('/api/status')
     def api_status():
         statuses = {};
@@ -209,6 +227,7 @@ try:
             for cam_id, thread in camera_threads.items():
                 statuses[cam_id] = {"id": cam_id, "name": thread.config.get('name', 'N/A'), "status": thread.status, "is_recording": thread.is_recording, "motion_detected": thread.motion_detected_in_frame}
         return jsonify(statuses)
+    
     @app.route('/fullscreen/<cam_id>')
     def fullscreen(cam_id): return render_template('fullscreen.html', cam_id=cam_id, camera_info=load_cameras_config().get(cam_id))
     @app.route('/playback/<cam_id>')
@@ -293,15 +312,15 @@ try:
                 time.sleep(0.1)
         return "", 204
     @app.route('/video_feed/<quality>/<cam_id>')
-    def video_feed(quality, cam_id): 
-        return Response(generate_frames(cam_id, quality), mimetype='multipart/x-mixed-replace; boundary=frame')
+    def video_feed(quality, cam_id): return Response(generate_frames(cam_id, quality), mimetype='multipart/x-mixed-replace; boundary=frame')
     
+    # --- DÉMARRAGE DE L'APPLICATION ---
     if __name__ == '__main__':
         maintain_thumbnails()
         sync_camera_threads()
-        print("\n--- Lancement du serveur VMS (Phase 2 Corrigée) ---")
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-
+        print("\n--- Lancement du serveur VMS (Phase 2, Ajout Caméra sur Page Dédicacée) ---")
+        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True) # Mettez debug=True pour le développement
+                                                                      # N'oubliez pas de le remettre à False pour la production
 except Exception as e:
     print(f"\n\n!!! ERREUR FATALE AU DEMARRAGE: {e} !!!\n\n"); traceback.print_exc();
     input("Le programme a plante. Appuyez sur Entree pour quitter...")

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Ajouter une Caméra</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">Mon VMS Web</a>
+        <div>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('index') }}">Vue en direct</a>
+            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+    <div class="container">
+        <h2>Ajouter une Nouvelle Caméra</h2>
+        <hr>
+        <form action="{{ url_for('add_camera') }}" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="camera_name">Nom de la caméra</label>
+                    <input type="text" class="form-control" id="camera_name" name="camera_name" placeholder="Ex: Salon" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_sd">URL du flux SD (ex: rtsp://.../stream2)</label>
+                    <input type="text" class="form-control" id="camera_url_sd" name="camera_url_sd" placeholder="rtsp://user:pass@192.168.1.10:554/stream2" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="camera_url_hd">URL du flux HD (optionnel)</label>
+                    <input type="text" class="form-control" id="camera_url_hd" name="camera_url_hd" placeholder="rtsp://user:pass@192.168.1.10:554/stream1">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="sensitivity">Sensibilité détection (plus le chiffre est élevé, moins c'est sensible)</label>
+                    <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="1000" required>
+                </div>
+            </div>
+            <div class="form-row align-items-center">
+                 <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                        <label class="form-check-label" for="is_active">Activée</label>
+                    </div>
+                </div>
+                <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="is_recording_enabled" name="is_recording_enabled" checked>
+                        <label class="form-check-label" for="is_recording_enabled">Enregistrement</label>
+                    </div>
+                </div>
+                 <div class="form-group col-md-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="show_detection" name="show_detection" checked>
+                        <label class="form-check-label" for="show_detection">Afficher détection</label>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <button type="submit" class="btn btn-success btn-lg">Ajouter la Caméra</button>
+            <a href="{{ url_for('config') }}" class="btn btn-secondary btn-lg">Annuler</a>
+        </form>
+    </div>
+</body>
+</html>
