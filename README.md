@@ -83,6 +83,27 @@ Une fois les dépendances installées et la configuration prête, lancez le serv
 ```bash
 python app.py
 
+Le serveur démarrera et sera accessible à l'adresse http://localhost:5000 ou http://[VOTRE_IP_LOCALE]:5000.
+(Note : Pour le développement, vous pouvez modifier app.run(debug=False) en app.run(debug=True) dans app.py pour activer le rechargement automatique du serveur lors des modifications de code/HTML. N'oubliez pas de le désactiver en production.)
+⚙️ Fonctionnement Détaillé
+L'application est entièrement contenue dans app.py et fonctionne sur les principes suivants :
+Démarrage : Au lancement, le script initialise Flask et appelle la fonction sync_camera_threads().
+sync_camera_threads() : C'est le cœur de la gestion dynamique des caméras. Cette fonction lit le fichier cameras.json, compare la liste des caméras configurées avec les threads actuellement en cours d'exécution, et effectue les actions suivantes de manière sélective :
+Arrête les threads des caméras qui ont été supprimées ou désactivées.
+Démarre un nouveau thread pour chaque nouvelle caméra active.
+Redémarre uniquement les threads dont la configuration a été modifiée.
+Classe CameraThread : Chaque caméra active est gérée par son propre thread (une instance de la classe CameraThread). Ce thread est responsable de :
+Se connecter au flux vidéo SD.
+Analyser en continu les images pour la détection de mouvement et mettre à jour son état de détection.
+Mettre à jour son propre statut (connecté, en enregistrement, erreur de flux, etc.) pour l'affichage en temps réel.
+Lancer et arrêter l'enregistrement des clips vidéo et la création des miniatures.
+Stocker la dernière image du flux pour le streaming en direct.
+Interface Flask : Le serveur Flask expose plusieurs routes :
+Des routes HTML qui affichent les différentes pages de l'interface (/, /config, /add_camera_form, /edit_camera/<id>, /playback/<id>, /recordings/<id>, etc.).
+Des routes de streaming (/video_feed/...) qui renvoient un flux MJPEG pour la vidéo en direct.
+Des routes API (/api/...), notamment /api/status qui est régulièrement appelée par le JavaScript de la page d'accueil pour mettre à jour les statuts en temps réel.
+
+🌳 Arborescence du Projet
 
 VMS_Python/
 ├── app.py              # <-- Cœur de l'application (serveur, routes, logique des caméras)
