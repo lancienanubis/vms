@@ -1,4 +1,4 @@
-# app.py (Version finale avec chemins absolus pour PyInstaller)
+# app.py (Version corrigée pour l'archivage des miniatures)
 
 try:
     from flask import Flask, render_template, Response, request, redirect, url_for, send_from_directory, jsonify
@@ -7,17 +7,13 @@ try:
     from unidecode import unidecode
     import shutil
 
-    # --- MODIFICATION CRITIQUE : Définition des chemins absolus ---
+    # --- CONSTANTES ---
     if getattr(sys, 'frozen', False):
-        # Nous sommes dans un bundle PyInstaller, le chemin est celui de l'exécutable
         application_path = os.path.dirname(sys.executable)
     else:
-        # Nous sommes dans un environnement Python normal, le chemin est celui du script
         application_path = os.path.dirname(os.path.abspath(__file__))
 
-    # --- CONSTANTES ---
-    # On définit toutes les constantes à partir du chemin de l'application
-    APP_VERSION = "1.1" # Mettez à jour cette version avant chaque nouvelle compilation
+    APP_VERSION = "1.1.1.0"
     UPDATE_URL = "https://raw.githubusercontent.com/lancienanubis/vms/main/version.json"
     
     RECORDINGS_DIR = os.path.join(application_path, "recordings")
@@ -32,8 +28,6 @@ try:
     if not os.path.exists(RECORDINGS_DIR): os.makedirs(RECORDINGS_DIR)
     if not os.path.exists(THUMBNAILS_DIR): os.makedirs(THUMBNAILS_DIR)
     if not os.path.exists(ARCHIVES_DIR): os.makedirs(ARCHIVES_DIR)
-
-    # --- Le reste de votre fichier est identique, je le colle en entier ci-dessous ---
 
     def sanitize_filename(name):
         sanitized_name = unidecode(name)
@@ -252,7 +246,31 @@ try:
     def update_camera(cam_id):
         cameras = load_cameras_config()
         if cam_id in cameras:
-            cameras[cam_id]['name'] = request.form['camera_name']
+            old_name = cameras[cam_id].get('name')
+            new_name = request.form['camera_name']
+            if old_name != new_name:
+                with thread_lock:
+                    if cam_id in camera_threads:
+                        print(f"[MIGRATION] Arrêt temporaire de '{old_name}' pour renommage.")
+                        camera_threads[cam_id].stop()
+                        camera_threads[cam_id].join(timeout=2.0)
+                        camera_threads.pop(cam_id, None)
+                print(f"[MIGRATION] Le nom de la caméra '{old_name}' a changé en '{new_name}'.")
+                old_safe_name = sanitize_filename(old_name)
+                new_safe_name = sanitize_filename(new_name)
+                for base_dir in [RECORDINGS_DIR, THUMBNAILS_DIR, ARCHIVES_DIR]:
+                    old_path = os.path.join(base_dir, old_safe_name)
+                    new_path = os.path.join(base_dir, new_safe_name)
+                    if os.path.isdir(old_path):
+                        if not os.path.isdir(new_path):
+                            try:
+                                shutil.move(old_path, new_path)
+                                print(f"[MIGRATION] Succès : '{old_path}' -> '{new_path}'")
+                            except Exception as e:
+                                print(f"[MIGRATION][ERREUR] Impossible de déplacer '{old_path}': {e}")
+                        else:
+                            print(f"[MIGRATION][AVERTISSEMENT] Le dossier '{new_path}' existe déjà.")
+            cameras[cam_id]['name'] = new_name
             cameras[cam_id]['url_sd'] = request.form['camera_url_sd']
             cameras[cam_id]['url_hd'] = request.form['camera_url_hd']
             cameras[cam_id]['sensitivity'] = int(request.form.get('sensitivity', 1000))
@@ -349,13 +367,8 @@ try:
             latest_version_info = response.json()
             latest_version = latest_version_info.get("version")
             download_url = latest_version_info.get("download_url")
-
-            if latest_version and download_url and latest_version > APP_VERSION:
-                return jsonify({
-                    "update_available": True,
-                    "latest_version": latest_version,
-                    "download_url": download_url
-                })
+            if latest_version and latest_version > APP_VERSION:
+                return jsonify({ "update_available": True, "latest_version": latest_version, "download_url": download_url })
             else:
                 return jsonify({"update_available": False})
         except requests.exceptions.RequestException as e:
@@ -651,7 +664,7 @@ try:
     if __name__ == '__main__':
         maintain_thumbnails()
         sync_camera_threads()
-        print("\n--- Lancement du serveur VMS (Version 1.1) ---")
+        print(f"\n--- Lancement du serveur VMS (Version {APP_VERSION}) ---")
         app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
 except Exception as e:
     print(f"\n\n!!! ERREUR FATALE AU DEMARRAGE: {e} !!!\n\n"); traceback.print_exc();

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        /* ... (vos styles existants pour le layout, la timeline, etc. restent inchangés) ... */
+        /* ... (vos styles existants sont inchangés) ... */
         html, body { height: 100%; overflow: hidden; }
         body { background-color: #343a40; color: #f8f9fa; display: flex; flex-direction: column; }
         .container { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -38,13 +38,7 @@
         .flatpickr-arrow { fill: #f8f9fa; }
         .day-with-recording { position: relative; font-weight: bold; }
         .day-with-recording::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background-color: #17a2b8; }
-        
-        /* MODIFICATION : Styles pour le groupe d'icônes d'action */
-        .video-actions i {
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: color 0.2s, transform 0.2s;
-        }
+        .video-actions i { font-size: 1.5rem; cursor: pointer; transition: color 0.2s, transform 0.2s; }
         .video-actions i:hover { transform: scale(1.1); }
         .video-actions i.archived { color: #ffc107; cursor: default; }
     </style>
@@ -61,7 +55,6 @@
             <div class="d-flex align-items-center">
                 <input type="text" id="date-selector" class="form-control form-control-sm mr-4" style="width: auto;" placeholder="Sélectionner une date...">
                 
-                <!-- MODIFICATION : Groupe d'icônes pour les actions -->
                 <div class="video-actions d-flex align-items-center" style="gap: 1rem;">
                     <i id="archive-icon" class="far fa-star text-light mr-2" title="Archiver cette vidéo"></i>
                     <i id="delete-icon" class="fas fa-trash-alt text-danger mr-4" title="Supprimer cette vidéo"></i>
@@ -93,53 +86,58 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
     
     <script>
-        // Le code existant est bon, on ajoute juste la nouvelle fonction
         const eventsContainer = document.getElementById('events-container'), hoursContainer = document.getElementsByClassName('timeline-hours')[0], videoPlayer = document.getElementById('videoPlayer'), liveIndicator = document.getElementById('live-indicator'), playheadContainer = document.getElementById('playhead-container'), playheadTime = document.getElementById('playhead-time'), clipProgressContainer = document.getElementById('clip-progress-container'), clipProgressBar = document.getElementById('clip-progress-bar');
         const camId = "{{ cam_id }}", cameraNameSafe = "{{ camera_info.safe_name }}";
         let currentRecordings = [], currentClipIndex = -1; const totalSecondsInDay = 86400;
 
+        // MODIFICATION : Logique corrigée
         function archiveCurrentVideo() {
             const archiveIcon = document.getElementById('archive-icon');
             if (archiveIcon.classList.contains('archived') || currentClipIndex === -1) return;
+            
             const currentRecording = currentRecordings[currentClipIndex];
             const date = document.getElementById('date-selector').value;
+            const nextClipIndex = currentClipIndex; // Sauvegarde de l'index
+
+            videoPlayer.pause();
+            videoPlayer.src = ''; // Libère le fichier
+
             fetch('/api/archive_recording', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cam_id: camId, date: date, filename: currentRecording.filename }) })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    archiveIcon.classList.remove('far');
-                    archiveIcon.classList.add('fas', 'archived');
-                    archiveIcon.title = "Vidéo archivée !";
-                    // Rafraîchir la timeline pour que la vidéo disparaisse
-                    fetchAndDrawTimeline(date);
-                } else { alert("Erreur lors de l'archivage : " + data.message); }
+                    // Mettre à jour la timeline puis passer au clip suivant
+                    fetchAndDrawTimeline(date).then(() => {
+                        playClip(nextClipIndex);
+                    });
+                } else { 
+                    alert("Erreur lors de l'archivage : " + data.message);
+                    playClip(currentClipIndex); // Relancer la lecture en cas d'échec
+                }
             }).catch(error => { console.error("Erreur réseau:", error); alert("Erreur réseau."); });
         }
         
-        // MODIFICATION : Ajout de la fonction de suppression
+        // MODIFICATION : Logique corrigée
         function deleteCurrentVideo() {
             if (currentClipIndex === -1) return;
             const currentRecording = currentRecordings[currentClipIndex];
             const date = document.getElementById('date-selector').value;
             if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement l'enregistrement ${currentRecording.filename} ?`)) return;
 
-            fetch('/api/delete_recording', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cam_id: camId, date: date, filename: currentRecording.filename })
-            })
+            videoPlayer.pause();
+            videoPlayer.src = ''; // Libère le fichier
+
+            fetch('/api/delete_recording', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cam_id: camId, date: date, filename: currentRecording.filename }) })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // On garde l'index actuel pour passer au suivant
                     const nextClipIndex = currentClipIndex;
-                    // On met à jour la timeline en arrière-plan
                     fetchAndDrawTimeline(date).then(() => {
-                        // Une fois la timeline mise à jour, on essaie de jouer le clip qui était à la même position
                         playClip(nextClipIndex);
                     });
                 } else {
                     alert("Erreur lors de la suppression : " + data.message);
+                    playClip(currentClipIndex); // Relancer la lecture en cas d'échec
                 }
             }).catch(error => { console.error("Erreur réseau:", error); alert("Erreur réseau."); });
         }
@@ -184,7 +182,6 @@
                 dateSelector.addEventListener('change', () => fetchAndDrawTimeline(dateSelector.value));
             }
 
-            // MODIFICATION : Ajout des deux écouteurs
             document.getElementById('archive-icon').addEventListener('click', archiveCurrentVideo);
             document.getElementById('delete-icon').addEventListener('click', deleteCurrentVideo);
             
