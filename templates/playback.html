@@ -4,11 +4,16 @@
     <meta charset="UTF-8">
     <title>Timeline - {{ camera_info.name }}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        body { background-color: #343a40; color: #f8f9fa; }
-        .player-container { width: 100%; background-color: #000; margin-bottom: 0; }
-        #videoPlayer { width: 100%; max-height: 70vh; }
-        .timeline-wrapper { position: relative; width: 100%; padding-bottom: 30px; margin-top: 20px; }
+        /* ... (vos styles existants pour le layout, la timeline, etc. restent inchangés) ... */
+        html, body { height: 100%; overflow: hidden; }
+        body { background-color: #343a40; color: #f8f9fa; display: flex; flex-direction: column; }
+        .container { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
+        .player-container { width: 100%; background-color: #000; flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+        #videoPlayer { width: 100%; max-height: 100%; }
+        .timeline-wrapper { position: relative; width: 100%; padding-bottom: 20px; margin-top: 10px; flex-shrink: 0; }
         .timeline-container { position: relative; width: 100%; height: 30px; background-color: #dee2e6; border-radius: 5px; overflow: visible; }
         .timeline-event { position: absolute; height: 100%; background-color: #007bff; opacity: 0.8; cursor: pointer; }
         .timeline-hours { display: flex; justify-content: space-between; position: relative; width: 100%; height: 20px; font-size: 12px; color: #6c757d; }
@@ -17,27 +22,62 @@
         #playhead-container { position: absolute; top: -10px; left: 0; z-index: 5; display: none; transform: translateX(-50%); }
         #playhead-arrow { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #28a745; }
         #playhead-time { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.7); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
-        #clip-progress-container { height: 10px; background-color: #495057; display: none; }
-        #clip-progress-bar { height: 100%; width: 0%; background-color: #17a2b8; transition: width 0.1s linear; }
+        #clip-progress-container { height: 10px; background-color: #495057; display: none; flex-shrink: 0; }
+        .speed-controls .btn.active-speed { background-color: #007bff !important; border-color: #007bff !important; }
+        .control-bar { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        #date-selector { background-color: #495057; color: #f8f9fa; border-color: #6c757d; cursor: pointer; }
+        .flatpickr-calendar { background-color: #495057; border-color: #6c757d; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .flatpickr-day { color: #f8f9fa; }
+        .flatpickr-day:hover, .flatpickr-day:focus { background-color: #6c757d; border-color: #6c757d; }
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: #007bff; border-color: #007bff; }
+        .flatpickr-day.today { border-color: #17a2b8; }
+        .flatpickr-day.today:hover { border-color: #007bff; }
+        .flatpickr-weekday { color: #f8f9fa; font-weight: bold; }
+        .flatpickr-months .flatpickr-month, .flatpickr-current-month .numInputWrapper { color: #f8f9fa; }
+        .flatpickr-current-month .numInput { color: #f8f9fa; background: transparent; }
+        .flatpickr-arrow { fill: #f8f9fa; }
+        .day-with-recording { position: relative; font-weight: bold; }
+        .day-with-recording::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background-color: #17a2b8; }
+        
+        /* MODIFICATION : Styles pour le groupe d'icônes d'action */
+        .video-actions i {
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .video-actions i:hover { transform: scale(1.1); }
+        .video-actions i.archived { color: #ffc107; cursor: default; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-dark bg-dark mb-4" style="flex-shrink: 0;">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <!-- MODIFICATION : La div suivante est SUPPRIMÉE pour retirer les liens redondants. -->
-        <!--
-        <div>
-            <a class="nav-item nav-link d-inline-block" href="/">Grille</a>
-            <a class="nav-item nav-link d-inline-block" href="{{ url_for('recordings_page', cam_id=cam_id) }}">Enregistrements</a>
-        </div>
-        -->
     </nav>
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>Relecture : {{ camera_info.name }}</h1>
-            <input type="date" id="date-selector" class="form-control" style="width: 200px;" value="{{ today }}">
-        </div>
+    <div class="container pb-3">
         <div class="player-container"><video id="videoPlayer" controls></video></div>
+        
+        <div class="control-bar text-center py-2 px-3 bg-dark">
+            <h5 class="mb-0 text-light">Caméra : {{ camera_info.name }}</h5>
+            <div class="d-flex align-items-center">
+                <input type="text" id="date-selector" class="form-control form-control-sm mr-4" style="width: auto;" placeholder="Sélectionner une date...">
+                
+                <!-- MODIFICATION : Groupe d'icônes pour les actions -->
+                <div class="video-actions d-flex align-items-center" style="gap: 1rem;">
+                    <i id="archive-icon" class="far fa-star text-light mr-2" title="Archiver cette vidéo"></i>
+                    <i id="delete-icon" class="fas fa-trash-alt text-danger mr-4" title="Supprimer cette vidéo"></i>
+                </div>
+
+                <div class="speed-controls">
+                    <strong class="mr-2 text-muted">Vitesse:</strong>
+                    <button class="btn btn-sm btn-outline-light speed-btn" data-speed="1">1x</button>
+                    <button class="btn btn-sm btn-outline-light speed-btn" data-speed="2">2x</button>
+                    <button class="btn btn-sm btn-outline-light speed-btn" data-speed="4">4x</button>
+                    <button class="btn btn-sm btn-outline-light speed-btn" data-speed="8">8x</button>
+                    <button class="btn btn-sm btn-outline-light speed-btn" data-speed="16">16x</button>
+                </div>
+            </div>
+        </div>
+        
         <div class="progress" id="clip-progress-container"><div class="progress-bar" id="clip-progress-bar" role="progressbar" style="width: 0%"></div></div>
         <div class="timeline-wrapper">
             <div class="timeline-container">
@@ -48,19 +88,136 @@
             <div class="timeline-hours"></div>
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+    
     <script>
-        const dateSelector = document.getElementById('date-selector'), eventsContainer = document.getElementById('events-container'), hoursContainer = document.getElementsByClassName('timeline-hours')[0], videoPlayer = document.getElementById('videoPlayer'), liveIndicator = document.getElementById('live-indicator'), playheadContainer = document.getElementById('playhead-container'), playheadTime = document.getElementById('playhead-time'), clipProgressContainer = document.getElementById('clip-progress-container'), clipProgressBar = document.getElementById('clip-progress-bar');
+        // Le code existant est bon, on ajoute juste la nouvelle fonction
+        const eventsContainer = document.getElementById('events-container'), hoursContainer = document.getElementsByClassName('timeline-hours')[0], videoPlayer = document.getElementById('videoPlayer'), liveIndicator = document.getElementById('live-indicator'), playheadContainer = document.getElementById('playhead-container'), playheadTime = document.getElementById('playhead-time'), clipProgressContainer = document.getElementById('clip-progress-container'), clipProgressBar = document.getElementById('clip-progress-bar');
         const camId = "{{ cam_id }}", cameraNameSafe = "{{ camera_info.safe_name }}";
         let currentRecordings = [], currentClipIndex = -1; const totalSecondsInDay = 86400;
+
+        function archiveCurrentVideo() {
+            const archiveIcon = document.getElementById('archive-icon');
+            if (archiveIcon.classList.contains('archived') || currentClipIndex === -1) return;
+            const currentRecording = currentRecordings[currentClipIndex];
+            const date = document.getElementById('date-selector').value;
+            fetch('/api/archive_recording', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cam_id: camId, date: date, filename: currentRecording.filename }) })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    archiveIcon.classList.remove('far');
+                    archiveIcon.classList.add('fas', 'archived');
+                    archiveIcon.title = "Vidéo archivée !";
+                    // Rafraîchir la timeline pour que la vidéo disparaisse
+                    fetchAndDrawTimeline(date);
+                } else { alert("Erreur lors de l'archivage : " + data.message); }
+            }).catch(error => { console.error("Erreur réseau:", error); alert("Erreur réseau."); });
+        }
+        
+        // MODIFICATION : Ajout de la fonction de suppression
+        function deleteCurrentVideo() {
+            if (currentClipIndex === -1) return;
+            const currentRecording = currentRecordings[currentClipIndex];
+            const date = document.getElementById('date-selector').value;
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement l'enregistrement ${currentRecording.filename} ?`)) return;
+
+            fetch('/api/delete_recording', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cam_id: camId, date: date, filename: currentRecording.filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // On garde l'index actuel pour passer au suivant
+                    const nextClipIndex = currentClipIndex;
+                    // On met à jour la timeline en arrière-plan
+                    fetchAndDrawTimeline(date).then(() => {
+                        // Une fois la timeline mise à jour, on essaie de jouer le clip qui était à la même position
+                        playClip(nextClipIndex);
+                    });
+                } else {
+                    alert("Erreur lors de la suppression : " + data.message);
+                }
+            }).catch(error => { console.error("Erreur réseau:", error); alert("Erreur réseau."); });
+        }
+        
         function timeToSeconds(t){const[h,m,s]=t.split(':').map(Number);return h*3600+m*60+s}
         function secondsToTime(s){s=Math.floor(s);const h=String(Math.floor(s/3600)).padStart(2,'0'),m=String(Math.floor(s%3600/60)).padStart(2,'0'),c=String(s%60).padStart(2,'0');return`${h}:${m}:${c}`}
         function drawHourMarkers(){hoursContainer.innerHTML='';for(let i=0;i<24;i++){const m=document.createElement('div');m.className='hour-marker';m.textContent=`${i}h`;hoursContainer.appendChild(m)}}
-        function playClip(i){if(i<0||i>=currentRecordings.length){currentClipIndex=-1;playheadContainer.style.display='none';clipProgressContainer.style.display='none';return}currentClipIndex=i;const r=currentRecordings[i],d=dateSelector.value,u=`/play/${cameraNameSafe}/${d}/${r.filename}`;videoPlayer.src=u;videoPlayer.play()}
-        async function fetchAndDrawTimeline(){const d=dateSelector.value;eventsContainer.innerHTML='';currentRecordings=[];const t=await fetch(`/api/timeline/${camId}/${d}`),e=await t.json();currentRecordings=e;if(e.length===0){eventsContainer.innerHTML='<div class="text-center p-2" style="color:#6c757d;">Aucun enregistrement.</div>';return}e.forEach((r,i)=>{const s=timeToSeconds(r.start_time),l=s/totalSecondsInDay*100,w=r.duration/totalSecondsInDay*100,d=document.createElement('div');d.className='timeline-event';d.style.left=`${l}%`;d.style.width=`${Math.max(w,.1)}%`;d.title=`Heure: ${r.start_time}, Durée: ${r.duration}s`;d.onclick=()=>playClip(i);eventsContainer.appendChild(d)})}
+
+        function playClip(i){
+            if(i<0||i>=currentRecordings.length){currentClipIndex=-1;playheadContainer.style.display='none';clipProgressContainer.style.display='none';videoPlayer.src='';return}
+            currentClipIndex=i;
+            const r=currentRecordings[i],d=document.getElementById('date-selector').value,u=`/play/${cameraNameSafe}/${d}/${r.filename}`;
+            videoPlayer.src=u;
+            videoPlayer.play();
+            const archiveIcon = document.getElementById('archive-icon');
+            archiveIcon.classList.remove('fas', 'archived');
+            archiveIcon.classList.add('far');
+            archiveIcon.title = "Archiver cette vidéo";
+        }
+
+        async function fetchAndDrawTimeline(date){if(!date)return;eventsContainer.innerHTML='';currentRecordings=[];const t=await fetch(`/api/timeline/${camId}/${date}`),e=await t.json();currentRecordings=e;if(e.length===0){eventsContainer.innerHTML='<div class="text-center p-2" style="color:#6c757d;">Aucun enregistrement.</div>';return}e.forEach((r,i)=>{const s=timeToSeconds(r.start_time),l=s/totalSecondsInDay*100,w=r.duration/totalSecondsInDay*100,d=document.createElement('div');d.className='timeline-event';d.style.left=`${l}%`;d.style.width=`${Math.max(w,.1)}%`;d.title=`Heure: ${r.start_time}, Durée: ${r.duration}s`;d.onclick=()=>playClip(i);eventsContainer.appendChild(d)})}
         function updateLiveIndicator(){const t=new Date,e=new Date(t.getFullYear(),t.getMonth(),t.getDate());liveIndicator.style.left=`${(t-e)/1e3/totalSecondsInDay*100}%`}
         function updatePlayhead(){if(currentClipIndex===-1||videoPlayer.paused||!currentRecordings[currentClipIndex])return;const t=currentRecordings[currentClipIndex],e=timeToSeconds(t.start_time),i=e+videoPlayer.currentTime,n=i/totalSecondsInDay*100;playheadContainer.style.left=`${n}%`;playheadTime.textContent=secondsToTime(i);const o=videoPlayer.currentTime/videoPlayer.duration*100;clipProgressBar.style.width=`${o}%`}
-        dateSelector.addEventListener('change',fetchAndDrawTimeline);videoPlayer.addEventListener('timeupdate',updatePlayhead);videoPlayer.addEventListener('ended',()=>playClip(currentClipIndex+1));videoPlayer.addEventListener('play',()=>{playheadContainer.style.display='block';clipProgressContainer.style.display='flex'});videoPlayer.addEventListener('pause',()=>{playheadContainer.style.display='none'});videoPlayer.addEventListener('seeking',updatePlayhead);
-        document.addEventListener('DOMContentLoaded',()=>{drawHourMarkers();fetchAndDrawTimeline();updateLiveIndicator();setInterval(updateLiveIndicator,1e4)});
+        videoPlayer.addEventListener('timeupdate',updatePlayhead);videoPlayer.addEventListener('ended',()=>playClip(currentClipIndex+1));videoPlayer.addEventListener('play',()=>{playheadContainer.style.display='block';clipProgressContainer.style.display='flex'});videoPlayer.addEventListener('pause',()=>{playheadContainer.style.display='none'});videoPlayer.addEventListener('seeking',updatePlayhead);
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const dateSelector = document.getElementById('date-selector');
+            try {
+                const response = await fetch(`/api/available_dates/${camId}`);
+                const availableDates = await response.json();
+                flatpickr(dateSelector, {
+                    "locale": "fr", dateFormat: "Y-m-d", defaultDate: "{{ today }}",
+                    onDayCreate: function(dObj, dStr, fp, dayElem){
+                        const date = dayElem.dateObj.getFullYear() + "-" + String(dayElem.dateObj.getMonth() + 1).padStart(2, '0') + "-" + String(dayElem.dateObj.getDate()).padStart(2, '0');
+                        if (availableDates.includes(date)) { dayElem.classList.add("day-with-recording"); }
+                    },
+                    onChange: function(selectedDates, dateStr, instance) { fetchAndDrawTimeline(dateStr); }
+                });
+            } catch (error) {
+                console.error("Impossible de charger les dates pour le calendrier:", error);
+                dateSelector.type = 'date'; dateSelector.value = "{{ today }}";
+                dateSelector.addEventListener('change', () => fetchAndDrawTimeline(dateSelector.value));
+            }
+
+            // MODIFICATION : Ajout des deux écouteurs
+            document.getElementById('archive-icon').addEventListener('click', archiveCurrentVideo);
+            document.getElementById('delete-icon').addEventListener('click', deleteCurrentVideo);
+            
+            drawHourMarkers();
+            fetchAndDrawTimeline("{{ today }}");
+            updateLiveIndicator();
+            setInterval(updateLiveIndicator, 10000);
+        });
+    </script>
+    <script>
+    // Le script pour la vitesse de lecture reste inchangé
+    document.addEventListener('DOMContentLoaded', () => {
+        const player = document.getElementById('videoPlayer');
+        const speedButtons = document.querySelectorAll('.speed-btn');
+        if (!player) return;
+        const defaultSpeedButton = document.querySelector('.speed-btn[data-speed="1"]');
+        if (defaultSpeedButton) { defaultSpeedButton.classList.add('active-speed'); }
+        speedButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const speed = parseFloat(button.dataset.speed);
+                player.playbackRate = speed;
+                speedButtons.forEach(btn => btn.classList.remove('active-speed'));
+                button.classList.add('active-speed');
+            });
+        });
+        player.addEventListener('loadeddata', () => {
+            const activeSpeedButton = document.querySelector('.speed-btn.active-speed');
+            if (activeSpeedButton) {
+                const activeSpeed = parseFloat(activeSpeedButton.dataset.speed);
+                player.playbackRate = activeSpeed;
+            }
+        });
+    });
     </script>
 </body>
 </html>

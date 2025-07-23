@@ -4,21 +4,25 @@
     <meta charset="UTF-8">
     <title>VMS - Modifier Caméra</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- MODIFICATION : Ajout du thème sombre pour la cohérence -->
+    <style>
+        body { background-color: #343a40; color: #f8f9fa; }
+        .form-control { background-color: #495057; color: #f8f9fa; border-color: #6c757d; }
+        .form-control:focus { background-color: #495057; color: #f8f9fa; border-color: #007bff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+        .form-text.text-muted { color: #adb5bd !important; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <!-- Suppression des boutons de navigation redondants -->
     </nav>
     <div class="container">
         <h2>Modifier Caméra : {{ camera.name }}</h2>
         <hr>
-        <!-- Le formulaire soumet à la route d'update, en passant l'ID de la caméra -->
         <form action="{{ url_for('update_camera', cam_id=cam_id) }}" method="post">
             <div class="form-row">
                 <div class="form-group col-md-4">
                     <label for="camera_name">Nom de la caméra</label>
-                    <!-- Les champs sont pré-remplis avec les données existantes de la caméra -->
                     <input type="text" class="form-control" id="camera_name" name="camera_name" value="{{ camera.name }}" required>
                 </div>
                 <div class="form-group col-md-4">
@@ -34,6 +38,12 @@
                 <div class="form-group col-md-4">
                     <label for="sensitivity">Sensibilité détection (plus le chiffre est élevé, moins c'est sensible)</label>
                     <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="{{ camera.sensitivity }}" required>
+                </div>
+                <!-- MODIFICATION : Ajout du nouveau champ -->
+                <div class="form-group col-md-4">
+                    <label for="min_recording_time">Durée Minimale d'Enregistrement (secondes)</label>
+                    <input type="number" class="form-control" id="min_recording_time" name="min_recording_time" value="{{ camera.min_recording_time | default(15, true) }}" required>
+                    <small class="form-text text-muted">Durée minimale d'un clip vidéo.</small>
                 </div>
             </div>
             <div class="form-row align-items-center">
@@ -61,7 +71,6 @@
             <a href="{{ url_for('config') }}" class="btn btn-secondary btn-lg">Annuler</a>
         </form>
         <hr>
-        <!-- Bouton de suppression séparé pour plus de clarté, comme dans votre code original -->
         <form action="{{ url_for('delete_camera') }}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette caméra ? Les enregistrements associés seront aussi supprimés.');" class="mt-4">
             <input type="hidden" name="cam_id" value="{{ cam_id }}">
             <button type="submit" class="btn btn-danger">Supprimer cette caméra</button>

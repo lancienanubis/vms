@@ -4,35 +4,116 @@
     <meta charset="UTF-8">
     <title>Enregistrements - {{ camera_info.name }}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
+        body { background-color: #343a40; color: #f8f9fa; }
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-        .grid-card { border: 1px solid #ddd; border-radius: .25rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        .grid-card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,.1); }
-        .card-img-top { height: 100px; object-fit: cover; background-color: #343a40; }
+        
+        /* MODIFICATION : Ajout du positionnement relatif pour l'icône */
+        .grid-card { 
+            position: relative;
+            border: 1px solid #495057;
+            border-radius: .25rem; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+            background-color: #495057;
+            color: #f8f9fa;
+        }
+        .grid-card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,.3); border-color: #007bff; }
+        .card-img-top { height: 100px; object-fit: cover; background-color: #212529; cursor: pointer; }
         .back-button { cursor: pointer; color: #007bff; font-weight: bold; }
+        #date-selector { background-color: #495057; color: #f8f9fa; border-color: #6c757d; cursor: pointer; }
+        .alert-info { background-color: #17a2b8; color: white; border-color: #17a2b8; }
+        .card-actions { display: flex; justify-content: space-around; padding-top: 5px; }
+        .card-actions i { cursor: pointer; font-size: 1.1rem; transition: transform 0.2s; }
+        .card-actions i:hover { transform: scale(1.2); }
+
+        /* MODIFICATION : Ajout du style pour l'icône de suppression par heure */
+        .delete-hour-icon {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 10;
+            cursor: pointer;
+            color: #dc3545; /* Rouge danger */
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 8px;
+            border-radius: 50%;
+            display: none; /* Cachée par défaut, visible au survol */
+        }
+        .grid-card:hover .delete-hour-icon {
+            display: block;
+        }
+        .delete-hour-icon:hover {
+            color: white;
+            background-color: #dc3545;
+        }
+
+        /* Styles pour le calendrier (inchangés) */
+        .flatpickr-calendar { background-color: #495057; border-color: #6c757d; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .flatpickr-day { color: #f8f9fa; }
+        .flatpickr-day:hover, .flatpickr-day:focus { background-color: #6c757d; border-color: #6c757d; }
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: #007bff; border-color: #007bff; }
+        .flatpickr-day.today { border-color: #17a2b8; }
+        .flatpickr-day.today:hover { border-color: #007bff; }
+        .flatpickr-weekday { color: #f8f9fa; font-weight: bold; }
+        .flatpickr-months .flatpickr-month, .flatpickr-current-month .numInputWrapper { color: #f8f9fa; }
+        .flatpickr-current-month .numInput { color: #f8f9fa; background: transparent; }
+        .flatpickr-arrow { fill: #f8f9fa; }
+        .day-with-recording { position: relative; font-weight: bold; }
+        .day-with-recording::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background-color: #17a2b8; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <div><a class="nav-item nav-link d-inline-block" href="/">Grille</a><a class="nav-item nav-link d-inline-block" href="/config">Configuration</a></div>
     </nav>
+    
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 id="page-title">Enregistrements : {{ camera_info.name }}</h1>
-            <input type="date" id="date-selector" class="form-control" style="width: 200px;" value="{{ today }}">
+            <input type="text" id="date-selector" class="form-control" style="width: 200px;" placeholder="Sélectionner une date...">
         </div>
         <div id="hourly-view"><h3 class="mb-3">Vue par heure</h3><div id="hour-grid" class="grid-container"></div></div>
-        <div id="event-view" style="display: none;"><h3 class="mb-3"><span class="back-button" onclick="showHourlyView()">← Retour</span> | Evénements pour <span id="event-hour"></span>h</h3><div id="event-grid" class="grid-container"></div></div>
+        <div id="event-view" style="display: none;"><h3 class="mb-3"><span class="back-button" onclick="showHourlyView()">← Retour</span> | Événements pour <span id="event-hour"></span>h</h3><div id="event-grid" class="grid-container"></div></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
     <script>
-        const dateSelector = document.getElementById('date-selector'), hourGrid = document.getElementById('hour-grid'), eventGrid = document.getElementById('event-grid'), hourlyView = document.getElementById('hourly-view'), eventView = document.getElementById('event-view'), eventHourSpan = document.getElementById('event-hour');
+        const hourGrid = document.getElementById('hour-grid'), eventGrid = document.getElementById('event-grid'), hourlyView = document.getElementById('hourly-view'), eventView = document.getElementById('event-view'), eventHourSpan = document.getElementById('event-hour');
         const camId = "{{ cam_id }}";
         const cameraNameSafe = "{{ camera_info.safe_name }}";
 
-        async function loadHourlyData() {
-            const selectedDate = dateSelector.value;
+        document.addEventListener('DOMContentLoaded', async () => {
+            // ... (logique du calendrier inchangée) ...
+            const dateSelector = document.getElementById('date-selector');
+            try {
+                const response = await fetch(`/api/available_dates/${camId}`);
+                const availableDates = await response.json();
+                flatpickr(dateSelector, {
+                    "locale": "fr", dateFormat: "Y-m-d", defaultDate: "{{ today }}",
+                    onDayCreate: function(dObj, dStr, fp, dayElem){
+                        const date = dayElem.dateObj.getFullYear() + "-" + String(dayElem.dateObj.getMonth() + 1).padStart(2, '0') + "-" + String(dayElem.dateObj.getDate()).padStart(2, '0');
+                        if (availableDates.includes(date)) {
+                            dayElem.classList.add("day-with-recording");
+                            dayElem.title = "Contient des enregistrements";
+                        }
+                    },
+                    onChange: function(selectedDates, dateStr, instance) { loadHourlyData(dateStr); }
+                });
+            } catch (error) {
+                console.error("Impossible de charger les dates pour le calendrier:", error);
+                dateSelector.type = 'date'; dateSelector.value = "{{ today }}";
+                dateSelector.addEventListener('change', () => loadHourlyData(dateSelector.value));
+            }
+            loadHourlyData("{{ today }}");
+        });
+
+        // MODIFICATION : La fonction loadHourlyData ajoute l'icône de suppression
+        async function loadHourlyData(selectedDate) {
+            if (!selectedDate) return;
+            showHourlyView();
             hourGrid.innerHTML = 'Chargement...';
             const response = await fetch(`/api/recordings_by_hour/${camId}/${selectedDate}`);
             const data = await response.json();
@@ -44,7 +125,21 @@
             }
             hours.forEach(hourStr => {
                 const hourData = data[hourStr];
-                const card = document.createElement('div'); card.className = 'grid-card card'; card.onclick = () => showEventView(hourStr);
+                const card = document.createElement('div'); 
+                card.className = 'grid-card card'; 
+                card.style.cursor = 'pointer'; 
+                card.onclick = () => showEventView(hourStr, selectedDate);
+                
+                // Ajout de l'icône de suppression
+                const deleteIcon = document.createElement('i');
+                deleteIcon.className = 'fas fa-trash-alt delete-hour-icon';
+                deleteIcon.title = `Supprimer tous les enregistrements de ${hourStr}h`;
+                deleteIcon.onclick = (e) => {
+                    e.stopPropagation(); // Empêche d'ouvrir la vue des événements
+                    deleteHour(card, selectedDate, hourStr, hourData.count);
+                };
+                card.appendChild(deleteIcon);
+                
                 const img = document.createElement('img'); img.className = 'card-img-top';
                 img.src = `/thumbnail/${cameraNameSafe}/${selectedDate}/${hourData.thumb}`;
                 img.onerror = function() { this.style.display='none'; };
@@ -55,32 +150,82 @@
                 hourGrid.appendChild(card);
             });
         }
-
-        async function showEventView(hour) {
+        
+        // ... (showEventView, archiveRecording, deleteRecording restent inchangées) ...
+        async function showEventView(hour, selectedDate) {
             hourlyView.style.display = 'none'; eventView.style.display = 'block'; eventHourSpan.textContent = hour;
             eventGrid.innerHTML = 'Chargement...';
-            const selectedDate = dateSelector.value;
             const response = await fetch(`/api/events_for_hour/${camId}/${selectedDate}/${hour}`);
             const events = await response.json();
             eventGrid.innerHTML = '';
             if (events.length === 0) return;
             events.forEach(event => {
-                const card = document.createElement('a'); card.className = 'grid-card card text-dark';
-                card.href = `/play/${cameraNameSafe}/${selectedDate}/${event.filename}`;
-                card.target = '_blank'; card.style.textDecoration = 'none';
+                const card = document.createElement('div'); card.className = 'grid-card card';
+                const link = document.createElement('a'); link.href = `/play/${cameraNameSafe}/${selectedDate}/${event.filename}`; link.target = '_blank';
                 const img = document.createElement('img'); img.className = 'card-img-top';
                 img.src = `/thumbnail/${cameraNameSafe}/${selectedDate}/${event.thumb}`;
                 img.onerror = function() { this.style.display='none'; };
+                link.appendChild(img);
                 const cardBody = document.createElement('div'); cardBody.className = 'card-body p-2 text-center';
-                const cardTitle = document.createElement('h6'); cardTitle.className = 'card-title mb-0'; cardTitle.textContent = event.time;
-                cardBody.appendChild(cardTitle); card.appendChild(img); card.appendChild(cardBody);
+                const cardTitle = document.createElement('h6'); cardTitle.className = 'card-title mb-1'; cardTitle.textContent = event.time;
+                const actionsDiv = document.createElement('div'); actionsDiv.className = 'card-actions';
+                const archiveIcon = document.createElement('i'); archiveIcon.className = 'fas fa-star text-warning'; archiveIcon.title = 'Archiver cet enregistrement';
+                archiveIcon.onclick = (e) => { e.stopPropagation(); archiveRecording(card, camId, selectedDate, event.filename); };
+                const deleteIcon = document.createElement('i'); deleteIcon.className = 'fas fa-trash-alt text-danger'; deleteIcon.title = 'Supprimer cet enregistrement';
+                deleteIcon.onclick = (e) => { e.stopPropagation(); deleteRecording(card, camId, selectedDate, event.filename); };
+                actionsDiv.appendChild(archiveIcon); actionsDiv.appendChild(deleteIcon);
+                cardBody.appendChild(cardTitle); cardBody.appendChild(actionsDiv);
+                card.appendChild(link); card.appendChild(cardBody);
                 eventGrid.appendChild(card);
             });
         }
-
         function showHourlyView() { eventView.style.display = 'none'; hourlyView.style.display = 'block'; }
-        dateSelector.addEventListener('change', loadHourlyData);
-        document.addEventListener('DOMContentLoaded', loadHourlyData);
+        function archiveRecording(cardElement, camId, date, filename) {
+            fetch('/api/archive_recording', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cam_id: camId, date: date, filename: filename }) })
+            .then(response => response.json()).then(data => {
+                if (data.status === 'success') {
+                    cardElement.style.transition = 'opacity 0.5s'; cardElement.style.opacity = '0'; setTimeout(() => cardElement.remove(), 500);
+                } else { alert('Erreur lors de l\'archivage: ' + data.message); }
+            }).catch(error => { console.error('Erreur réseau:', error); alert('Erreur réseau.'); });
+        }
+        function deleteRecording(cardElement, camId, date, filename) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement l'enregistrement ${filename} ?`)) return;
+            fetch('/api/delete_recording', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cam_id: camId, date: date, filename: filename }) })
+            .then(response => response.json()).then(data => {
+                if (data.status === 'success') {
+                    cardElement.style.transition = 'opacity 0.5s'; cardElement.style.opacity = '0'; setTimeout(() => cardElement.remove(), 500);
+                } else { alert('Erreur lors de la suppression: ' + data.message); }
+            }).catch(error => { console.error('Erreur réseau:', error); alert('Erreur réseau.'); });
+        }
+
+        // MODIFICATION : Nouvelle fonction pour supprimer une heure complète
+        function deleteHour(cardElement, date, hour, count) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement les ${count} enregistrement(s) de ${hour}h ?`)) {
+                return;
+            }
+
+            fetch('/api/delete_hour', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cam_id: camId, date: date, hour: hour })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Si la suppression réussit, on retire la carte de l'heure
+                    cardElement.style.transition = 'opacity 0.5s, transform 0.5s';
+                    cardElement.style.opacity = '0';
+                    cardElement.style.transform = 'scale(0)';
+                    setTimeout(() => cardElement.remove(), 500);
+                } else {
+                    alert('Erreur lors de la suppression par heure: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur réseau lors de la suppression par heure:', error);
+                alert('Erreur réseau.');
+            });
+        }
     </script>
 </body>
 </html>

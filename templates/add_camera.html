@@ -4,18 +4,17 @@
     <meta charset="UTF-8">
     <title>VMS - Ajouter une Caméra</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- MODIFICATION : Ajout du thème sombre pour la cohérence -->
+    <style>
+        body { background-color: #343a40; color: #f8f9fa; }
+        .form-control { background-color: #495057; color: #f8f9fa; border-color: #6c757d; }
+        .form-control:focus { background-color: #495057; color: #f8f9fa; border-color: #007bff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+        .form-text.text-muted { color: #adb5bd !important; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <a class="navbar-brand" href="/">Mon VMS Web</a>
-        <!-- MODIFICATION : Suppression des boutons de navigation redondants -->
-        <!-- La div suivante a été supprimée -->
-        <!--
-        <div>
-            <a class="nav-item nav-link d-inline-block" href="{{ url_for('index') }}">Vue en direct</a>
-            <a class="nav-item nav-link d-inline-block active" href="{{ url_for('config') }}">Configuration</a>
-        </div>
-        -->
     </nav>
     <div class="container">
         <h2>Ajouter une Nouvelle Caméra</h2>
@@ -39,6 +38,12 @@
                 <div class="form-group col-md-4">
                     <label for="sensitivity">Sensibilité détection (plus le chiffre est élevé, moins c'est sensible)</label>
                     <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="1000" required>
+                </div>
+                <!-- MODIFICATION : Ajout du nouveau champ -->
+                <div class="form-group col-md-4">
+                    <label for="min_recording_time">Durée Minimale d'Enregistrement (secondes)</label>
+                    <input type="number" class="form-control" id="min_recording_time" name="min_recording_time" value="15" required>
+                    <small class="form-text text-muted">Durée minimale d'un clip vidéo.</small>
                 </div>
             </div>
             <div class="form-row align-items-center">

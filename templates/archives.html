@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Archives de {{ camera_info.name }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background-color: #343a40; color: #f8f9fa; }
+        .list-group-item { 
+            background-color: #495057; 
+            border-color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .archive-info { display: flex; align-items: center; flex-grow: 1; }
+        .archive-thumb { height: 40px; border-radius: 4px; margin-right: 15px; }
+        .archive-actions { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+        .archive-actions a, .archive-actions i { cursor: pointer; font-size: 1.2rem; transition: transform 0.2s; color: #adb5bd; }
+        .archive-actions a:hover, .archive-actions i:hover { transform: scale(1.2); color: #fff; }
+        .archive-actions .fa-comment-dots { color: #17a2b8; }
+        .archive-actions .fa-cloud-download-alt { color: #28a745; }
+        .archive-actions .fa-trash-alt { color: #dc3545; }
+        .date-header {
+            background-color: #212529;
+            padding: 0.5rem 1.25rem;
+            border-radius: 5px;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .comment-display {
+            font-size: 0.9rem;
+            color: #adb5bd;
+            font-style: italic;
+            margin-left: 20px;
+            max-width: 50%;
+        }
+        .modal-content { background-color: #343a40; }
+        .modal-header { border-bottom-color: #495057; }
+        .modal-footer { border-top-color: #495057; }
+        .close { color: #fff; text-shadow: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">Mon VMS Web</a>
+    </nav>
+    <div class="container">
+        <h1 class="mb-4">Archives pour : <span class="text-warning">{{ camera_info.name }}</span></h1>
+        
+        {% for date in dates %}
+            <h4 class="date-header">{{ date.date }}</h4>
+            <ul class="list-group">
+                {% for file in date.files %}
+                <li class="list-group-item" id="item-{{ file.filename | replace('.', '-') }}">
+                    <div class="archive-info">
+                        <a href="{{ url_for('play_archive_video', camera_name=safe_cam_name, date=date.date, filename=file.filename) }}" target="_blank">
+                            <img src="{{ url_for('serve_archive_thumbnail', camera_name=safe_cam_name, date=date.date, thumb_filename=file.thumb_filename) }}" class="archive-thumb">
+                        </a>
+                        
+                        <span class="font-weight-bold">{{ file.time }}</span>
+
+                        <div class="comment-display" id="comment-{{ file.filename | replace('.', '-') }}">
+                            {{ file.comment }}
+                        </div>
+                    </div>
+                    <div class="archive-actions">
+                        <!-- L'icône de commentaire est de retour -->
+                        <i class="fas fa-comment-dots" title="Ajouter/Modifier un commentaire" 
+                           onclick="openCommentModal('{{ safe_cam_name }}', '{{ date.date }}', '{{ file.filename }}', `{{ file.comment | e }}`)"></i>
+                        
+                        <a href="{{ url_for('play_archive_video', camera_name=safe_cam_name, date=date.date, filename=file.filename) }}?download=true" title="Télécharger la vidéo">
+                            <i class="fas fa-cloud-download-alt"></i>
+                        </a>
+
+                        <i class="fas fa-trash-alt" title="Supprimer cette archive"
+                           onclick="deleteArchive(this, '{{ safe_cam_name }}', '{{ date.date }}', '{{ file.filename }}')"></i>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="alert alert-info mt-4">Cette caméra n'a aucune vidéo archivée pour le moment.</div>
+        {% endfor %}
+    </div>
+
+    <!-- La fenêtre modale est de retour -->
+    <div class="modal fade" id="commentModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajouter un commentaire</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modalSafeCamName">
+                    <input type="hidden" id="modalDate">
+                    <input type="hidden" id="modalFilename">
+                    <textarea id="commentText" class="form-control" rows="4" style="background-color: #495057; color: #f8f9fa; border-color: #6c757d;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="saveComment()">Sauvegarder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts JS de Bootstrap -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        // Le JavaScript complet est de retour
+        function openCommentModal(safeCamName, date, filename, currentComment) {
+            document.getElementById('modalSafeCamName').value = safeCamName;
+            document.getElementById('modalDate').value = date;
+            document.getElementById('modalFilename').value = filename;
+            document.getElementById('commentText').value = currentComment;
+            $('#commentModal').modal('show');
+        }
+
+        function saveComment() {
+            const safeCamName = document.getElementById('modalSafeCamName').value;
+            const date = document.getElementById('modalDate').value;
+            const filename = document.getElementById('modalFilename').value;
+            const comment = document.getElementById('commentText').value;
+
+            fetch('/api/archives/save_comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ safe_cam_name: safeCamName, date: date, filename: filename, comment: comment })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    $('#commentModal').modal('hide');
+                    const commentId = `comment-${filename.replace(/\./g, '-')}`;
+                    let commentDiv = document.getElementById(commentId);
+                    
+                    if (!commentDiv && data.new_comment.trim() !== "") {
+                        const infoDiv = document.getElementById(`item-${filename.replace(/\./g, '-')}`).querySelector('.archive-info');
+                        commentDiv = document.createElement('div');
+                        commentDiv.className = 'comment-display';
+                        commentDiv.id = commentId;
+                        infoDiv.appendChild(commentDiv);
+                    }
+                    
+                    if(commentDiv) {
+                        commentDiv.textContent = data.new_comment;
+                    }
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            });
+        }
+
+        function deleteArchive(iconElement, safeCamName, date, filename) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement cette archive ?\nFichier: ${filename}`)) {
+                return;
+            }
+            fetch('/api/archives/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ safe_cam_name: safeCamName, date: date, filename: filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const liElement = iconElement.closest('li');
+                    liElement.style.transition = 'opacity 0.5s';
+                    liElement.style.opacity = '0';
+                    setTimeout(() => liElement.remove(), 500);
+                } else {
+                    alert('Erreur lors de la suppression: ' + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
