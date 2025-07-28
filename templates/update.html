@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Mise à jour</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { 
+            background-color: #343a40; 
+            color: #f8f9fa;
+        }
+        .container { margin-top: 20px; }
+        .card {
+            background-color: #495057;
+            border: 1px solid #6c757d;
+        }
+        #update-log-container {
+            display: none;
+            margin-top: 20px;
+        }
+        #update-log {
+            background-color: #212529;
+            color: #f8f9fa;
+            font-family: monospace;
+            height: 250px;
+            overflow-y: scroll;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            border: 1px solid #6c757d;
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: .2em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">
+            Mon VMS Web <span class="badge badge-info">v{{ app_version }}</span>
+        </a>
+        <div>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>Mise à jour de l'application</h2>
+                    </div>
+                    <div class="card-body">
+                        {% if update_info.update_available %}
+                            <div id="update-available-section">
+                                <div class="alert alert-info text-center">
+                                    <h4 class="alert-heading">Une nouvelle version est disponible !</h4>
+                                </div>
+                                <p><strong>Version actuelle :</strong> <span class="badge badge-secondary">{{ update_info.current_version }}</span></p>
+                                <p><strong>Nouvelle version :</strong> <span class="badge badge-success">{{ update_info.latest_version }}</span></p>
+                                
+                                <h5 class="mt-4">Notes de version :</h5>
+                                <p><em>{{ update_info.notes }}</em></p>
+                                
+                                <div class="text-center mt-4">
+                                    <button id="start-update-btn" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-rocket"></i> Lancer la mise à jour
+                                    </button>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-success text-center">
+                                <h4 class="alert-heading">Votre application est à jour.</h4>
+                            </div>
+                            <p class="text-center"><strong>Version actuelle :</strong> <span class="badge badge-success">{{ update_info.current_version }}</span></p>
+                        {% endif %}
+
+                        <div id="update-log-container">
+                            <h4>Progression de la mise à jour :</h4>
+                            <div id="update-log"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startBtn = document.getElementById('start-update-btn');
+    if (!startBtn) return;
+
+    const logContainer = document.getElementById('update-log-container');
+    const logBox = document.getElementById('update-log');
+    const updateAvailableSection = document.getElementById('update-available-section');
+
+    function appendLog(message) {
+        logBox.innerHTML += message + '\n';
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    startBtn.addEventListener('click', function() {
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Initialisation...';
+        updateAvailableSection.style.display = 'none';
+        logContainer.style.display = 'block';
+
+        appendLog('Demande de mise à jour envoyée au serveur...');
+
+        fetch('/api/initiate_update', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                appendLog('Réponse du serveur : ' + data.message);
+                appendLog('\nLe serveur va s\'arrêter. La connexion sera perdue.');
+                appendLog('Le lanceur va maintenant prendre le relais pour télécharger et installer la mise à jour.');
+                appendLog('Cette page ne sera plus mise à jour. Vous pouvez la fermer.');
+                appendLog('L\'application redémarrera automatiquement une fois la mise à jour terminée.');
+            })
+            .catch(error => {
+                appendLog('--- ERREUR ---');
+                appendLog('Impossible de lancer le processus de mise à jour.');
+                appendLog('Détails : ' + error.message);
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-rocket"></i> Réessayer la mise à jour';
+            });
+    });
+});
+</script>
+
+</body>
+</html>

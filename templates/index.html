@@ -17,7 +17,6 @@
         .camera-title-container { display: flex; justify-content: center; align-items: center; margin-bottom: 0.5rem; }
         .camera-title-container h4 { color: #f8f9fa; }
         
-        /* Style pour la notification de mise à jour */
         #update-notification a {
             color: #ffc107;
             font-weight: bold;
@@ -32,9 +31,10 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4" style="flex-shrink: 0;">
-        <a class="navbar-brand" href="/">Mon VMS Web</a>
+        <a class="navbar-brand" href="/">
+            Mon VMS Web <span class="badge badge-info">v{{ app_version }}</span>
+        </a>
         <div>
-            <!-- Conteneur pour la notification -->
             <div id="update-notification" class="d-inline-block mr-3"></div>
             <a class="nav-item nav-link d-inline-block" href="{{ url_for('config') }}">Configuration</a>
         </div>
@@ -66,7 +66,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Script de mise à jour des statuts (inchangé)
             const camera_ids = [ {% for cam_id, camera in cameras.items() %}"{{ cam_id }}",{% endfor %} ];
             function updateStatuses() {
                 fetch('/api/status')
@@ -102,7 +101,6 @@
                 updateStatuses();
             }
 
-            // Script de vérification de mise à jour
             function checkForUpdates() {
                 fetch('/api/check_update')
                     .then(response => response.json())
@@ -110,8 +108,8 @@
                         if (data.update_available) {
                             const notificationDiv = document.getElementById('update-notification');
                             notificationDiv.innerHTML = `
-                                <a href="${data.download_url}" target="_blank" title="Télécharger la nouvelle version">
-                                    <i class="fas fa-arrow-alt-circle-down"></i> Mise à jour ${data.latest_version} disponible !
+                                <a href="{{ url_for('update_page') }}" title="Une mise à jour est disponible !">
+                                    <i class="fas fa-arrow-alt-circle-down"></i> Nouvelle version disponible !
                                 </a>
                             `;
                         }
