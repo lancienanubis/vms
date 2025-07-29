@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>VMS - Modifier Caméra</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <!-- MODIFICATION : Ajout du thème sombre pour la cohérence -->
     <style>
         body { background-color: #343a40; color: #f8f9fa; }
         .form-control { background-color: #495057; color: #f8f9fa; border-color: #6c757d; }
@@ -26,7 +25,7 @@
                     <input type="text" class="form-control" id="camera_name" name="camera_name" value="{{ camera.name }}" required>
                 </div>
                 <div class="form-group col-md-4">
-                    <label for="camera_url_sd">URL du flux SD (ex: rtsp://.../stream2)</label>
+                    <label for="camera_url_sd">URL du flux SD (ex: rtsp://...)</label>
                     <input type="text" class="form-control" id="camera_url_sd" name="camera_url_sd" value="{{ camera.url_sd }}" required>
                 </div>
                 <div class="form-group col-md-4">
@@ -36,14 +35,17 @@
             </div>
             <div class="form-row">
                 <div class="form-group col-md-4">
-                    <label for="sensitivity">Sensibilité détection (plus le chiffre est élevé, moins c'est sensible)</label>
+                    <label for="sensitivity">Sensibilité détection (plus grand = moins sensible)</label>
                     <input type="number" class="form-control" id="sensitivity" name="sensitivity" value="{{ camera.sensitivity }}" required>
                 </div>
-                <!-- MODIFICATION : Ajout du nouveau champ -->
                 <div class="form-group col-md-4">
-                    <label for="min_recording_time">Durée Minimale d'Enregistrement (secondes)</label>
+                    <label for="min_recording_time">Durée Min. Enregistrement (secondes)</label>
                     <input type="number" class="form-control" id="min_recording_time" name="min_recording_time" value="{{ camera.min_recording_time | default(15, true) }}" required>
-                    <small class="form-text text-muted">Durée minimale d'un clip vidéo.</small>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="retention_days">Conservation des enregistrements (jours)</label>
+                    <input type="number" class="form-control" id="retention_days" name="retention_days" value="{{ camera.retention_days | default(0, true) }}" min="0" required>
+                    <small class="form-text text-muted">0 = conserver indéfiniment.</small>
                 </div>
             </div>
             <div class="form-row align-items-center">

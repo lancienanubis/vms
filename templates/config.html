@@ -30,6 +30,33 @@
         </a>
     </nav>
     <div class="container">
+        <!-- Section pour les Paramètres Généraux -->
+        <div class="mb-5">
+            <h2>Paramètres Généraux</h2>
+            <hr>
+            <form action="{{ url_for('update_settings') }}" method="post">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="purge_hour">Heure de la purge quotidienne</label>
+                        <select id="purge_hour" name="purge_hour" class="form-control">
+                            {% for hour in range(24) %}
+                                <option value="{{ hour }}" {% if hour == settings.purge_hour %}selected{% endif %}>
+                                    {{ "%02d:00" | format(hour) }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Chaque jour à cette heure, les enregistrements plus vieux que la durée de conservation seront supprimés.</small>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Enregistrer les Paramètres</button>
+                
+                <!-- ==================== BOUTON AJOUTÉ ==================== -->
+                <a href="{{ url_for('maintenance_page') }}" class="btn btn-secondary">Aller à la Maintenance</a>
+                <!-- ======================================================= -->
+
+            </form>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Caméras Configurées</h2>
             <a href="{{ url_for('add_camera_form') }}" class="btn btn-success btn-lg">
@@ -44,6 +71,7 @@
                         <th>Nom</th>
                         <th class="text-center">Enregistrements</th>
                         <th class="text-center">Archives</th>
+                        <th class="text-center">Conservation</th>
                         <th class="text-center">Active</th>
                         <th class="text-center">Enregistrement</th>
                         <th class="text-center">Détection Visuelle</th>
@@ -56,6 +84,13 @@
                         <td>{{ camera.name }}</td>
                         <td class="text-center">{{ camera.recordings_usage }}</td>
                         <td class="text-center">{{ camera.archives_usage }}</td>
+                        <td class="text-center">
+                            {% if camera.retention_days and camera.retention_days > 0 %}
+                                {{ camera.retention_days }} jours
+                            {% else %}
+                                <span class="text-muted">Infini</span>
+                            {% endif %}
+                        </td>
                         <td class="text-center"><span class="camera-status-dot {{ 'status-true' if camera.is_active else 'status-false' }}"></span></td>
                         <td class="text-center"><span class="camera-status-dot {{ 'status-true' if camera.is_recording_enabled else 'status-false' }}"></span></td>
                         <td class="text-center">
@@ -76,7 +111,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center">Aucune caméra configurée. Cliquez sur "Ajouter une Caméra" pour commencer.</td>
+                        <td colspan="8" class="text-center">Aucune caméra configurée. Cliquez sur "Ajouter une Caméra" pour commencer.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

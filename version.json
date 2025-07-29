@@ -1,5 +1,4 @@
 {
-  "version": "1.1.2.2",
-  "notes": "Création d'un système de mise à jour automatique fiable.Implémentation d'une purge automatique des enregistrements avec heure configurable. Ajout d'une page de maintenance pour les actions manuelles..",
-  "download_url": "https://github.com/lancienanubis/vms/releases/download/V1.1.2.2/update1.1.2.2.zip"
+  "version": "1.1.1.1",
+  "download_url": "https://github.com/lancienanubis/vms/releases/download/v1.1.1.1/Setup-VMS.V1.1.1.1.exe"
 }

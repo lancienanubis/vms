@@ -7,7 +7,8 @@
         "is_active": true,
         "is_recording_enabled": false,
         "show_detection": true,
-        "min_recording_time": 60
+        "min_recording_time": 60,
+        "retention_days": 10
     },
     "ce824131-ad3e-43ac-9420-bf3b9f3a00b3": {
         "name": "Entr\u00e9e",
@@ -17,7 +18,8 @@
         "is_active": true,
         "is_recording_enabled": false,
         "show_detection": true,
-        "min_recording_time": 60
+        "min_recording_time": 60,
+        "retention_days": 9
     },
     "2cdd2722-9d79-48e6-ac5f-ac25ab5a1b39": {
         "name": "Jardin",

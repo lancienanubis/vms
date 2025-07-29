@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>VMS - Maintenance</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body { 
+            background-color: #343a40; 
+            color: #f8f9fa;
+        }
+        .container { margin-top: 20px; }
+        .card {
+            background-color: #495057;
+            border: 1px solid #6c757d;
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: .2em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="/">
+            Mon VMS Web <span class="badge badge-info">v{{ app_version }}</span>
+        </a>
+        <div>
+            <a class="nav-item nav-link d-inline-block" href="{{ url_for('config') }}">Configuration</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>Maintenance</h2>
+                    </div>
+                    <div class="card-body">
+                        <p>Utilisez ces outils pour maintenir votre système en bon état de fonctionnement.</p>
+                        
+                        <hr>
+                        
+                        <!-- Section Vérification des Miniatures -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5>Vérifier les miniatures manquantes</h5>
+                                <small class="text-muted">Analyse tous les enregistrements et crée les miniatures si elles n'existent pas.</small>
+                            </div>
+                            <button id="btn-thumbnails" class="btn btn-info">Lancer la vérification</button>
+                        </div>
+                        
+                        <hr>
+
+                        <!-- Section Purge Manuelle -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5>Purger les anciens enregistrements</h5>
+                                <small class="text-muted">Supprime immédiatement les enregistrements plus anciens que la durée de conservation définie pour chaque caméra.</small>
+                            </div>
+                            <button id="btn-purge" class="btn btn-warning">Lancer la purge</button>
+                        </div>
+
+                        <!-- Zone de statut pour afficher les résultats -->
+                        <div id="status-box" class="alert mt-4" style="display: none;"></div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnThumbnails = document.getElementById('btn-thumbnails');
+    const btnPurge = document.getElementById('btn-purge');
+    const statusBox = document.getElementById('status-box');
+
+    function runTask(button, url) {
+        // Garder le texte original du bouton
+        const originalText = button.textContent;
+        
+        // Afficher un état de chargement
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> En cours...';
+        statusBox.style.display = 'none';
+        
+        fetch(url, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                statusBox.className = 'alert alert-success';
+                statusBox.textContent = data.message;
+                statusBox.style.display = 'block';
+            })
+            .catch(error => {
+                statusBox.className = 'alert alert-danger';
+                statusBox.textContent = 'Erreur : ' + (error.message || 'Erreur de communication.');
+                statusBox.style.display = 'block';
+            })
+            .finally(() => {
+                // Rétablir le bouton à son état initial
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
+    }
+
+    btnThumbnails.addEventListener('click', function() {
+        runTask(this, "{{ url_for('manual_thumbnails') }}");
+    });
+
+    btnPurge.addEventListener('click', function() {
+        runTask(this, "{{ url_for('manual_purge') }}");
+    });
+});
+</script>
+
+</body>
+</html>
