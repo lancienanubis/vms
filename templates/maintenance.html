@@ -63,6 +63,16 @@
                             <button id="btn-purge" class="btn btn-warning">Lancer la purge</button>
                         </div>
 
+                        <!-- Section pour le redémarrage -->
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5>Redémarrer le serveur</h5>
+                                <small class="text-muted">Force un redémarrage complet de l'application serveur. Utile après un changement de configuration critique ou en cas de blocage.</small>
+                            </div>
+                            <button id="btn-restart" class="btn btn-danger">Redémarrer le serveur</button>
+                        </div>
+
                         <!-- Zone de statut pour afficher les résultats -->
                         <div id="status-box" class="alert mt-4" style="display: none;"></div>
 
@@ -77,12 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnThumbnails = document.getElementById('btn-thumbnails');
     const btnPurge = document.getElementById('btn-purge');
     const statusBox = document.getElementById('status-box');
+    const btnRestart = document.getElementById('btn-restart');
 
-    function runTask(button, url) {
-        // Garder le texte original du bouton
+    function runTask(button, url, confirmMessage = null) {
+        if (confirmMessage && !confirm(confirmMessage)) {
+            return;
+        }
+        
         const originalText = button.textContent;
         
-        // Afficher un état de chargement
         button.disabled = true;
         button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> En cours...';
         statusBox.style.display = 'none';
@@ -98,14 +111,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusBox.className = 'alert alert-success';
                 statusBox.textContent = data.message;
                 statusBox.style.display = 'block';
+                // Si c'est un redémarrage, le bouton restera désactivé, ce qui est normal car la page va devenir inaccessible.
+                if (button.id !== 'btn-restart') {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
             })
             .catch(error => {
                 statusBox.className = 'alert alert-danger';
                 statusBox.textContent = 'Erreur : ' + (error.message || 'Erreur de communication.');
                 statusBox.style.display = 'block';
-            })
-            .finally(() => {
-                // Rétablir le bouton à son état initial
                 button.disabled = false;
                 button.innerHTML = originalText;
             });
@@ -117,6 +132,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     btnPurge.addEventListener('click', function() {
         runTask(this, "{{ url_for('manual_purge') }}");
+    });
+
+    btnRestart.addEventListener('click', function() {
+        runTask(this, "{{ url_for('manual_restart') }}", "Êtes-vous sûr de vouloir redémarrer le serveur ? L'opération coupera brièvement tous les flux.");
     });
 });
 </script>
