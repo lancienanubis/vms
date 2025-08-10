@@ -1,5 +1,7 @@
 {
   "version": "1.2.0.1",
   "download_url": "https://github.com/lancienanubis/vms/releases/download/V1.2.0.1/Update1.2.0.1.zip"
+  "notes": "Correction du bug de suppression. Amélioration de la stabilité de l'enregistrement."
 }
+
 
